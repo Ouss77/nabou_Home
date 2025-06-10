@@ -1,0 +1,49 @@
+import { type NextRequest, NextResponse } from "next/server"
+import { getUserByEmail } from "@/lib/db"
+import { cookies } from "next/headers"
+
+export async function POST(request: NextRequest) {
+  try {
+    const { email, password } = await request.json()
+
+    if (!email || !password) {
+      return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
+    }
+
+    const user = await getUserByEmail(email)
+
+    if (!user) {
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
+    }
+
+    // For demo purposes, we'll accept the demo passwords
+    const validPassword =
+      (email === "admin@barbershop.com" && password === "admin123") ||
+      (email === "john@barbershop.com" && password === "barber123") ||
+      user.password_hash === `hashed_${password}`
+
+    if (!validPassword) {
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
+    }
+
+    const userSession = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    }
+
+    const cookieStore = await cookies()
+    cookieStore.set("user", JSON.stringify(userSession), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    })
+
+    return NextResponse.json({ user: userSession })
+  } catch (error) {
+    console.error("Login error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
