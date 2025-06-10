@@ -22,6 +22,17 @@ export function getCurrentDateString(): string {
 }
 
 /**
+ * Convert a Date object to YYYY-MM-DD format in local timezone
+ * This is crucial to avoid timezone conversion issues
+ */
+export function formatDateToString(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+/**
  * Get the current time in HH:MM format in local timezone
  */
 export function getCurrentTimeString(): string {
@@ -32,10 +43,11 @@ export function getCurrentTimeString(): string {
 }
 
 /**
- * Convert a date string to a Date object in local timezone
+ * Convert a date string (YYYY-MM-DD) to a Date object at local midnight
  */
 export function parseLocalDate(dateString: string): Date {
   const [year, month, day] = dateString.split("-").map(Number)
+  // Creates a date at midnight in the local timezone
   return new Date(year, month - 1, day)
 }
 
@@ -43,33 +55,36 @@ export function parseLocalDate(dateString: string): Date {
  * Check if a given date and time is in the past (client-side)
  */
 export function isDateTimePast(date: string, time: string): boolean {
-  const appointmentDate = parseLocalDate(date)
+  const appointmentDateTime = parseLocalDate(date)
   const [hours, minutes] = time.split(":").map(Number)
-  appointmentDate.setHours(hours, minutes, 0, 0)
+  appointmentDateTime.setHours(hours, minutes, 0, 0)
 
   const now = getCurrentDateTime()
-  return appointmentDate < now
+  return appointmentDateTime < now
 }
 
 /**
  * Check if a time slot is in the past for a given date (client-side)
  */
-export function isTimeSlotPast(time: string, date?: string): boolean {
-  const checkDate = date || getCurrentDateString()
-  const today = getCurrentDateString()
+export function isTimeSlotPast(time: string, dateString: string): boolean {
+  const todayString = getCurrentDateString()
 
-  // If the date is in the future, the time slot is not past
-  if (checkDate > today) {
+  // Compare date strings directly first for clarity
+  if (compareDateStrings(dateString, todayString) > 0) {
+    // dateString is in the future
     return false
   }
-
-  // If the date is in the past, the time slot is past
-  if (checkDate < today) {
+  if (compareDateStrings(dateString, todayString) < 0) {
+    // dateString is in the past
     return true
   }
 
-  // If it's today, check the time
-  return isDateTimePast(checkDate, time)
+  // If dateString is today, compare the time
+  const now = getCurrentDateTime()
+  const [hours, minutes] = time.split(":").map(Number)
+  const timeSlotToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0)
+
+  return timeSlotToday < now
 }
 
 /**
@@ -83,17 +98,28 @@ export function timeToMinutes(time: string): number {
 /**
  * Convert minutes to time string
  */
-export function minutesToTime(minutes: number): string {
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`
+export function minutesToTime(minutesValue: number): string {
+  const hours = Math.floor(minutesValue / 60)
+  const mins = minutesValue % 60
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`
 }
 
 /**
  * Get all time slots that have passed for a given date (client-side)
  */
-export function getPassedTimeSlots(date: string, timeSlots: string[]): string[] {
-  return timeSlots.filter((time) => isTimeSlotPast(time, date))
+export function getPassedTimeSlots(dateString: string, timeSlots: string[]): string[] {
+  const todayString = getCurrentDateString()
+
+  if (compareDateStrings(dateString, todayString) > 0) {
+    // Future date
+    return []
+  }
+  if (compareDateStrings(dateString, todayString) < 0) {
+    // Past date
+    return [...timeSlots]
+  }
+  // Today: filter based on current time
+  return timeSlots.filter((time) => isTimeSlotPast(time, dateString))
 }
 
 /**
@@ -112,7 +138,11 @@ export function formatDateForDisplay(date: Date): string {
  * Check if two dates are the same day
  */
 export function isSameDay(date1: Date, date2: Date): boolean {
-  return date1.toDateString() === date2.toDateString()
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  )
 }
 
 /**
@@ -123,32 +153,17 @@ export function isToday(date: Date): boolean {
 }
 
 /**
- * Get the next available time slot after current time
- */
-export function getNextAvailableTimeSlot(timeSlots: string[], date?: string): string | null {
-  const checkDate = date || getCurrentDateString()
-  const availableSlots = timeSlots.filter((time) => !isTimeSlotPast(time, checkDate))
-  return availableSlots.length > 0 ? availableSlots[0] : null
-}
-
-/**
  * Check if a date is in the past (client-side)
+ * Compares based on the start of the day.
  */
 export function isDateInPast(date: Date): boolean {
-  const today = getCurrentDateTime()
-  today.setHours(0, 0, 0, 0)
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
 
-  const checkDate = new Date(date)
-  checkDate.setHours(0, 0, 0, 0)
+  const checkDateStart = new Date(date)
+  checkDateStart.setHours(0, 0, 0, 0)
 
-  return checkDate < today
-}
-
-/**
- * Get timezone offset in minutes
- */
-export function getTimezoneOffset(): number {
-  return new Date().getTimezoneOffset()
+  return checkDateStart < todayStart
 }
 
 /**
@@ -159,32 +174,57 @@ export function getTimezoneName(): string {
 }
 
 /**
- * Format time for display with timezone consideration
+ * Get tomorrow's date string for comparison
  */
-export function formatTimeForDisplay(time: string): string {
-  const [hours, minutes] = time.split(":").map(Number)
-  const date = new Date()
-  date.setHours(hours, minutes, 0, 0)
-
-  return date.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  })
+export function getTomorrowDateString(): string {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  return formatDateToString(tomorrow)
 }
 
 /**
- * Check if current time is within business hours
+ * Check if a given date string is tomorrow
  */
-export function isWithinBusinessHours(currentTime?: Date): boolean {
-  const now = currentTime || getCurrentDateTime()
-  const hours = now.getHours()
-  const minutes = now.getMinutes()
-  const currentMinutes = hours * 60 + minutes
+export function isTomorrow(dateString: string): boolean {
+  return dateString === getTomorrowDateString()
+}
 
-  // Business hours: 9:00 AM to 6:00 PM
-  const startMinutes = 9 * 60 // 9:00 AM
-  const endMinutes = 18 * 60 // 6:00 PM
+/**
+ * Compare two date strings (YYYY-MM-DD).
+ * Returns:
+ * -1 if date1 is before date2
+ *  0 if date1 is the same as date2
+ *  1 if date1 is after date2
+ */
+export function compareDateStrings(date1String: string, date2String: string): number {
+  // Direct string comparison works for YYYY-MM-DD format
+  if (date1String < date2String) return -1
+  if (date1String > date2String) return 1
+  return 0
+}
 
-  return currentMinutes >= startMinutes && currentMinutes < endMinutes
+/**
+ * Debug function to help troubleshoot date issues
+ */
+export function debugDateInfo(selectedDate: Date | null): void {
+  if (!selectedDate) {
+    console.log("[DEBUG] No selected date")
+    return
+  }
+
+  const now = new Date()
+  const todayString = getCurrentDateString()
+  const selectedDateString = formatDateToString(selectedDate)
+  const tomorrowString = getTomorrowDateString()
+
+  console.log("[DEBUG] Date Information:", {
+    now: now.toString(),
+    todayString,
+    selectedDateString,
+    tomorrowString,
+    isToday: isToday(selectedDate),
+    isTomorrow: isTomorrow(selectedDateString),
+    comparison: compareDateStrings(selectedDateString, todayString),
+    timezone: getTimezoneName(),
+  })
 }

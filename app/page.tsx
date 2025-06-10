@@ -13,15 +13,13 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Scissors className="h-8 w-8 text-slate-800" />
-            <span className="text-2xl font-bold text-slate-800">BarberBook</span>
+            <span className="text-2xl font-bold text-slate-800">Nabou</span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/login">
               <Button variant="ghost">Login</Button>
             </Link>
-            <Link href="/admin">
-              <Button>Admin Portal</Button>
-            </Link>
+
           </div>
         </div>
       </header>

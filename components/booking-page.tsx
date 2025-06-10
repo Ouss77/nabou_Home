@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -20,6 +19,10 @@ import {
   isDateInPast,
   getTimezoneName,
   isDateTimePast,
+  compareDateStrings,
+  isTomorrow,
+  formatDateToString,
+  debugDateInfo,
 } from "@/lib/time-utils"
 
 interface Store {
@@ -60,65 +63,49 @@ export function BookingPage({ store, services }: BookingPageProps) {
   const [fetchingSlots, setFetchingSlots] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
 
-  // Use refs to track previous values and prevent unnecessary updates
   const prevSelectedDateRef = useRef<Date | null>(null)
-  const prevSelectedTimeRef = useRef<string>("")
   const lastFetchTimeRef = useRef<number>(0)
 
+  // Static time slots - moved outside to prevent recreation
   const timeSlots = [
-    "09:00",
-    "09:30",
-    "10:00",
-    "10:30",
-    "11:00",
-    "11:30",
-    "12:00",
-    "12:30",
-    "13:00",
-    "13:30",
-    "14:00",
-    "14:30",
-    "15:00",
-    "15:30",
-    "16:00",
-    "16:30",
-    "17:00",
-    "17:30",
+    "09:00", "09:30",
+    "10:00", "10:30",
+    "11:00", "11:30",
+    "12:00", "12:30",
+    "13:00", "13:30",
+    "14:00", "14:30",
+    "15:00", "15:30",
+    "16:00", "16:30",
+    "17:00", "17:30",
   ]
 
   // Update current time every minute
   useEffect(() => {
-    const updateTime = () => {
-      setCurrentTime(new Date())
-    }
-
-    // Update immediately
-    updateTime()
-
-    // Then update every minute
-    const interval = setInterval(updateTime, 60000)
-
+    const interval = setInterval(() => setCurrentTime(new Date()), 60000)
     return () => clearInterval(interval)
   }, [])
 
-  // Function to fetch booked times - memoized with useCallback
+  // Memoized function to fetch booked times
   const fetchBookedTimes = useCallback(async () => {
     if (!selectedDate || !store.id) {
       setBookedTimes([])
-      setPassedTimes([])
       return
     }
 
-    // Prevent too frequent API calls
     const now = Date.now()
-    if (now - lastFetchTimeRef.current < 5000) {
-      return // Don't fetch if last fetch was less than 5 seconds ago
+    if (now - lastFetchTimeRef.current < 1000) {
+      return
     }
     lastFetchTimeRef.current = now
 
     setFetchingSlots(true)
     try {
-      const dateString = selectedDate.toISOString().split("T")[0]
+      const dateString = formatDateToString(selectedDate)
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[FetchBookedTimes] Fetching for date:", dateString)
+      }
+
       const params = new URLSearchParams({
         storeId: store.id,
         date: dateString,
@@ -131,71 +118,84 @@ export function BookingPage({ store, services }: BookingPageProps) {
 
       if (response.ok) {
         setBookedTimes(data.bookedTimes || [])
-
-        // Calculate passed times on client side
-        const clientPassedTimes = getPassedTimeSlots(dateString, timeSlots)
-        setPassedTimes(clientPassedTimes)
-
-        // Clear selected time if it's now booked or passed
-        const currentSelectedTime = prevSelectedTimeRef.current
-        if (
-          currentSelectedTime &&
-          (data.bookedTimes.includes(currentSelectedTime) || clientPassedTimes.includes(currentSelectedTime))
-        ) {
-          setSelectedTime("")
-          prevSelectedTimeRef.current = ""
-        }
       } else {
-        console.error("Failed to fetch booked times:", data.error)
+        console.error("[FetchBookedTimes] Failed to fetch booked times:", data.error)
         setBookedTimes([])
-        setPassedTimes([])
       }
     } catch (err) {
-      console.error("Error fetching booked times:", err)
+      console.error("[FetchBookedTimes] Error fetching booked times:", err)
       setBookedTimes([])
-      setPassedTimes([])
     } finally {
       setFetchingSlots(false)
     }
-  }, [selectedDate, store.id, currentTime, timeSlots])
+  }, [selectedDate, store.id, currentTime])
 
-  // Update passed times when current time changes (only for today)
+  // Centralized effect to calculate and set passedTimes
   useEffect(() => {
-    if (selectedDate && isToday(selectedDate)) {
-      const dateString = getCurrentDateString()
-      const newPassedTimes = getPassedTimeSlots(dateString, timeSlots)
+    if (!selectedDate) {
+      setPassedTimes([])
+      return
+    }
 
-      // Only update if passed times actually changed
-      setPassedTimes((prevPassedTimes) => {
-        const hasChanged = JSON.stringify(prevPassedTimes) !== JSON.stringify(newPassedTimes)
-        if (hasChanged) {
-          // Clear selected time if it has passed
-          const currentSelectedTime = prevSelectedTimeRef.current
-          if (currentSelectedTime && newPassedTimes.includes(currentSelectedTime)) {
-            setSelectedTime("")
-            prevSelectedTimeRef.current = ""
-          }
-          return newPassedTimes
-        }
-        return prevPassedTimes
+    const dateString = formatDateToString(selectedDate)
+    const todayString = getCurrentDateString()
+    const comparison = compareDateStrings(dateString, todayString)
+
+    // Debug logging to help troubleshoot
+    if (process.env.NODE_ENV === "development") {
+      console.log("[PassedTimesEffect] Date comparison:", {
+        selectedDate: dateString,
+        today: todayString,
+        comparison,
+        isToday: comparison === 0,
+        isFuture: comparison > 0,
+        isPast: comparison < 0,
       })
     }
-  }, [currentTime, selectedDate, timeSlots])
 
-  // Fetch booked times when selectedDate changes
+    let newPassedTimes: string[] = []
+    if (comparison > 0) {
+      // Future date (including tomorrow)
+      newPassedTimes = []
+    } else if (comparison < 0) {
+      // Past date
+      newPassedTimes = [...timeSlots]
+    } else {
+      // Today
+      newPassedTimes = getPassedTimeSlots(dateString, timeSlots)
+    }
+
+    setPassedTimes(newPassedTimes)
+  }, [selectedDate, currentTime]) // Removed timeSlots from dependencies
+
+  // Effect to clear selectedTime if it becomes passed
   useEffect(() => {
-    const dateChanged = prevSelectedDateRef.current?.getTime() !== selectedDate?.getTime()
+    if (selectedTime && passedTimes.includes(selectedTime)) {
+      setSelectedTime("")
+    }
+  }, [selectedTime, passedTimes])
 
-    if (dateChanged) {
+  // Effect to clear selectedTime if it becomes booked
+  useEffect(() => {
+    if (selectedTime && bookedTimes.includes(selectedTime)) {
+      setSelectedTime("")
+    }
+  }, [selectedTime, bookedTimes])
+
+  // Effect for when selectedDate changes
+  useEffect(() => {
+    const hasDateChanged = prevSelectedDateRef.current?.getTime() !== selectedDate?.getTime()
+
+    if (hasDateChanged || !prevSelectedDateRef.current) {
+      if (process.env.NODE_ENV === "development") {
+        debugDateInfo(selectedDate)
+      }
+
       prevSelectedDateRef.current = selectedDate
+      setSelectedTime("") // Clear selected time when date changes
       fetchBookedTimes()
     }
   }, [selectedDate, fetchBookedTimes])
-
-  // Track selected time changes
-  useEffect(() => {
-    prevSelectedTimeRef.current = selectedTime
-  }, [selectedTime])
 
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -205,7 +205,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
       return
     }
 
-    const dateString = selectedDate.toISOString().split("T")[0]
+    const dateString = formatDateToString(selectedDate)
 
     // Client-side validation for past appointments
     if (isDateTimePast(dateString, selectedTime)) {
@@ -213,13 +213,12 @@ export function BookingPage({ store, services }: BookingPageProps) {
       return
     }
 
-    // Check if selected time is booked (client-side validation)
+    // Re-check if selected time is booked or passed
     if (bookedTimes.includes(selectedTime)) {
       setError("This time slot is no longer available. Please select a different time.")
+      fetchBookedTimes()
       return
     }
-
-    // Check if selected time has passed (client-side validation)
     if (passedTimes.includes(selectedTime)) {
       setError("This time slot has already passed. Please select a future time.")
       return
@@ -242,24 +241,19 @@ export function BookingPage({ store, services }: BookingPageProps) {
           appointmentTime: selectedTime,
           notes,
           clientTimezone: getTimezoneName(),
-          clientDateTime: currentTime.toISOString(),
+          clientDateTime: new Date().toISOString(),
         }),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        // Handle specific conflict errors
-        if (response.status === 409) {
-          setError(data.error || "This time slot is no longer available. Please select a different time.")
-          // Reset fetch timer to allow immediate refresh
-          lastFetchTimeRef.current = 0
-          await fetchBookedTimes()
-        } else if (response.status === 400 && data.error.includes("past")) {
+        if (response.status === 409 || (data.error && data.error.toLowerCase().includes("booked"))) {
+          setError(data.error || "This time slot was just booked. Please select a different time.")
+          fetchBookedTimes()
+        } else if (response.status === 400 && data.error && data.error.toLowerCase().includes("past")) {
           setError(data.error || "Cannot book appointments in the past. Please select a future time.")
-          // Reset fetch timer to allow immediate refresh
-          lastFetchTimeRef.current = 0
-          await fetchBookedTimes()
+          fetchBookedTimes()
         } else {
           throw new Error(data.error || "Failed to book appointment")
         }
@@ -274,35 +268,46 @@ export function BookingPage({ store, services }: BookingPageProps) {
     }
   }
 
-  // Calendar implementation with proper timezone handling
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear()
-    const month = date.getMonth()
-    const firstDay = new Date(year, month, 1)
-    const lastDay = new Date(year, month + 1, 0)
-    const daysInMonth = lastDay.getDate()
-    const startingDayOfWeek = firstDay.getDay()
+  // Fixed calendar navigation functions
+  const navigateToPreviousMonth = () => {
+    setCurrentMonth((prevMonth) => {
+      const newMonth = new Date(prevMonth)
+      newMonth.setMonth(newMonth.getMonth() - 1)
+      return newMonth
+    })
+  }
 
-    const days = []
+  const navigateToNextMonth = () => {
+    setCurrentMonth((prevMonth) => {
+      const newMonth = new Date(prevMonth)
+      newMonth.setMonth(newMonth.getMonth() + 1)
+      return newMonth
+    })
+  }
 
-    // Add empty cells for days before the first day of the month
+  const getDaysInMonth = (monthDate: Date) => {
+    const year = monthDate.getFullYear()
+    const month = monthDate.getMonth()
+    const firstDayOfMonth = new Date(year, month, 1)
+    const lastDayOfMonth = new Date(year, month + 1, 0)
+    const daysInMonthCount = lastDayOfMonth.getDate()
+    const startingDayOfWeek = firstDayOfMonth.getDay()
+
+    const daysArray = []
+
     for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null)
+      daysArray.push(null)
     }
 
-    // Add days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day)
-
-      // Don't normalize the date for comparison - use isDateInPast instead
-      if (!isDateInPast(date)) {
-        days.push(date)
+    for (let day = 1; day <= daysInMonthCount; day++) {
+      const currentDateObj = new Date(year, month, day)
+      if (!isDateInPast(currentDateObj)) {
+        daysArray.push(currentDateObj)
       } else {
-        days.push(null)
+        daysArray.push(null)
       }
     }
-
-    return days
+    return daysArray
   }
 
   const days = getDaysInMonth(currentMonth)
@@ -360,7 +365,6 @@ export function BookingPage({ store, services }: BookingPageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
       <header className="bg-white border-b">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-3">
@@ -378,12 +382,11 @@ export function BookingPage({ store, services }: BookingPageProps) {
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Store Information */}
           <div className="space-y-6">
             <Card>
               <CardContent className="p-0">
                 <Image
-                  src={store.image_url || "/placeholder.svg?height=300&width=500&query=modern barbershop interior"}
+                  src={store.image_url || "/placeholder.svg?height=300&width=500&query=modern+barbershop+interior"}
                   alt={store.title}
                   width={500}
                   height={300}
@@ -430,22 +433,51 @@ export function BookingPage({ store, services }: BookingPageProps) {
             </Card>
           </div>
 
-          {/* Booking Form */}
           <div>
             <Card>
               <CardHeader>
                 <CardTitle>Book Your Appointment</CardTitle>
                 <CardDescription>Select your preferred service, date, and time</CardDescription>
                 {selectedDate && isToday(selectedDate) && (
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground mt-2">
                     <div>
-                      Current time: {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      Current time: {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} (
+                      {getTimezoneName()})
                     </div>
-                    <div>Timezone: {getTimezoneName()}</div>
                   </div>
                 )}
               </CardHeader>
-              <CardContent>
+              {selectedDate && (
+                <div className="px-6 pt-2 pb-0">
+                  <div className="p-2 bg-blue-50 rounded-md text-blue-800 text-sm flex items-center justify-between">
+                    <div>
+                      <span className="font-medium">Selected date: </span>
+                      {formatDateForDisplay(selectedDate)}
+                    </div>
+                    <div className="flex gap-2">
+                      {isToday(selectedDate) ? (
+                        <Badge variant="outline" className="bg-blue-100">
+                          Today
+                        </Badge>
+                      ) : isTomorrow(formatDateToString(selectedDate)) ? (
+                        <Badge variant="outline" className="bg-green-100 text-green-800">
+                          Tomorrow
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-green-100 text-green-800">
+                          Future Date
+                        </Badge>
+                      )}
+                      {process.env.NODE_ENV === "development" && (
+                        <Badge variant="outline" className="bg-gray-100 text-gray-600 text-xs">
+                          Passed: {passedTimes.length}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <CardContent className="pt-6">
                 <form onSubmit={handleBooking} className="space-y-6">
                   {error && (
                     <Alert variant="destructive">
@@ -475,28 +507,10 @@ export function BookingPage({ store, services }: BookingPageProps) {
                             {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                           </h3>
                           <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const newMonth = new Date(currentMonth)
-                                newMonth.setMonth(newMonth.getMonth() - 1)
-                                setCurrentMonth(newMonth)
-                              }}
-                            >
+                            <Button type="button" variant="outline" size="sm" onClick={navigateToPreviousMonth}>
                               <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const newMonth = new Date(currentMonth)
-                                newMonth.setMonth(newMonth.getMonth() + 1)
-                                setCurrentMonth(newMonth)
-                              }}
-                            >
+                            <Button type="button" variant="outline" size="sm" onClick={navigateToNextMonth}>
                               <ChevronRight className="h-4 w-4" />
                             </Button>
                           </div>
@@ -520,7 +534,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
                                   className={`w-full h-full text-sm rounded-md transition-colors ${
                                     selectedDate && day.toDateString() === selectedDate.toDateString()
                                       ? "bg-blue-500 text-white"
-                                      : "hover:bg-gray-100"
+                                      : "hover:bg-slate-100"
                                   }`}
                                 >
                                   {day.getDate()}
@@ -540,11 +554,11 @@ export function BookingPage({ store, services }: BookingPageProps) {
                         {fetchingSlots && (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Loader2 className="h-3 w-3 animate-spin" />
-                            Checking availability...
+                            Checking...
                           </div>
                         )}
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                         {timeSlots.map((time) => {
                           const isBooked = bookedTimes.includes(time)
                           const isPassed = passedTimes.includes(time)
@@ -554,9 +568,8 @@ export function BookingPage({ store, services }: BookingPageProps) {
                           let buttonText = time
                           let variant: "default" | "secondary" | "outline" | "destructive" = "outline"
 
-                          if (isSelected) {
-                            variant = "default"
-                          } else if (isBooked) {
+                          if (isSelected) variant = "default"
+                          else if (isBooked) {
                             buttonText = "Booked"
                             variant = "secondary"
                           } else if (isPassed) {
@@ -572,26 +585,27 @@ export function BookingPage({ store, services }: BookingPageProps) {
                               size="sm"
                               onClick={() => !isDisabled && setSelectedTime(time)}
                               disabled={isDisabled}
-                              className={`${isDisabled ? "opacity-70 cursor-not-allowed" : ""} ${
-                                isSelected ? "ring-2 ring-blue-500" : ""
-                              }`}
+                              className={`${isDisabled ? "opacity-70 cursor-not-allowed" : ""} ${isSelected ? "ring-2 ring-blue-500 ring-offset-1" : ""}`}
                             >
                               {buttonText}
                             </Button>
                           )
                         })}
                       </div>
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        {bookedTimes.length > 0 && <p>• Gray slots are already booked</p>}
-                        {passedTimes.length > 0 && <p>• Red slots have already passed</p>}
-                        {selectedDate && isToday(selectedDate) && (
-                          <p>• Time slots update automatically based on your local time</p>
+                      <div className="text-xs text-muted-foreground space-y-1 pt-1">
+                        {bookedTimes.length > 0 && <p>• Gray slots are booked.</p>}
+                        {passedTimes.length > 0 && <p>• Red slots have passed.</p>}
+                        {process.env.NODE_ENV === "development" && (
+                          <p>
+                            • Debug: Today={getCurrentDateString()}, Selected=
+                            {selectedDate ? formatDateToString(selectedDate) : "none"}
+                          </p>
                         )}
                       </div>
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="clientName">Full Name</Label>
                       <Input
@@ -602,7 +616,6 @@ export function BookingPage({ store, services }: BookingPageProps) {
                         placeholder="Your full name"
                       />
                     </div>
-
                     <div className="space-y-2">
                       <Label htmlFor="clientEmail">Email</Label>
                       <Input
@@ -615,9 +628,8 @@ export function BookingPage({ store, services }: BookingPageProps) {
                       />
                     </div>
                   </div>
-
                   <div className="space-y-2">
-                    <Label htmlFor="clientPhone">Phone Number</Label>
+                    <Label htmlFor="clientPhone">Phone Number (Optional)</Label>
                     <Input
                       id="clientPhone"
                       type="tel"
@@ -626,9 +638,8 @@ export function BookingPage({ store, services }: BookingPageProps) {
                       placeholder="Your phone number"
                     />
                   </div>
-
                   <div className="space-y-2">
-                    <Label htmlFor="notes">Additional Notes (optional)</Label>
+                    <Label htmlFor="notes">Additional Notes (Optional)</Label>
                     <Textarea
                       id="notes"
                       value={notes}
