@@ -86,6 +86,11 @@ export async function getUserByEmail(email: string) {
   return result[0] || null
 }
 
+export async function getAllStores() {
+  const result = await sql` SELECT * FROM stores`
+  return result
+}
+
 export async function getAllBarbers() {
   const result = await sql`
     SELECT u.id, u.email, u.name, u.created_at,

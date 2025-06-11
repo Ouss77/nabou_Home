@@ -1,11 +1,40 @@
+"use client"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Scissors, Calendar, Users, Star, Clock, MapPin } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-
+interface Store {
+  id: string;
+  title: string;
+  address: string;
+  description: string;
+  image_url: string;
+}
 export default function HomePage() {
+   const [stores, setStores] = useState<Store[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchStores() {
+      try {
+        const response = await fetch('/api/stores');
+        const data = await response.json();
+        console.log('stores:', data);
+
+        setStores(data);
+      } catch (error) {
+        console.error('Error fetching stores:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchStores();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
@@ -24,31 +53,53 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="py-20 px-4">
-        <div className="container mx-auto text-center">
-          <Badge variant="secondary" className="mb-4">
+       {/* Hero Section */}
+     <section className="relative min-h-[85vh] flex items-center justify-center px-4 overflow-hidden">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0">
+          <Image
+            src="https://media.gettyimages.com/id/1493228916/photo/barber-shop-interior-with-chairs-mirrors-pendant-lights-brick-wall-and-cityscape-from-the.jpg?s=1024x1024&w=gi&k=20&c=MS0GRgodSUNMzXWphiUx12zcveDTlGw95IVw_tb1UcU="
+            alt="Barbershop background"
+            fill
+            className="object-cover object-center"
+            priority
+            quality={90}
+          />
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
+        </div>
+
+        {/* Content */}
+        <div className="container mx-auto text-center relative z-10">
+          <Badge variant="secondary" className="mb-4 bg-white/10 text-white border-none">
             Professional Barber Management
           </Badge>
-          <h1 className="text-5xl md:text-6xl font-bold text-slate-800 mb-6">
+          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6">
             Streamline Your
-            <span className="text-blue-600"> Barbershop</span>
+            <span className="text-blue-400"> Barbershop</span>
           </h1>
-          <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-slate-200 mb-8 max-w-2xl mx-auto">
             Complete appointment management system for modern barbershops. Manage bookings, showcase services, and grow
             your business.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/admin">
-              <Button size="lg" className="text-lg px-8">
+              <Button size="lg" className="text-lg px-8 bg-blue-400 hover:bg-blue-500 text-black">
                 Get Started
               </Button>
             </Link>
             <Link href="#features">
-              <Button size="lg" variant="outline" className="text-lg px-8">
+              <Button size="lg" variant="outline" className="text-lg px-8 border-white hover:bg-white/10">
                 Learn More
               </Button>
             </Link>
+          </div>
+        </div>
+
+        {/* Scroll Indicator */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
+          <div className="w-1 h-16 rounded-full bg-white/20">
+            <div className="w-full h-1/2 bg-white/40 rounded-full" />
           </div>
         </div>
       </section>
@@ -122,26 +173,52 @@ export default function HomePage() {
       </section>
 
       {/* Demo Section */}
-      <section className="py-20 px-4 bg-slate-50">
+    <section className="py-20 px-4 bg-slate-50">
         <div className="container mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-slate-800 mb-4">See It In Action</h2>
-            <p className="text-xl text-slate-600">Experience the clean, intuitive interface</p>
+            <h2 className="text-4xl font-bold text-slate-800 mb-4">Our Barbershops</h2>
+            <p className="text-xl text-slate-600">Find and book your perfect barbershop</p>
           </div>
 
-          <div className="max-w-4xl mx-auto">
-            <Card className="border-0 shadow-2xl overflow-hidden">
-              <CardContent className="p-0">
-                <Image
-                  src="/placeholder.svg?height=600&width=800"
-                  alt="BarberBook Dashboard"
-                  width={800}
-                  height={600}
-                  className="w-full h-auto"
-                />
-              </CardContent>
-            </Card>
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center min-h-[200px]">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {stores.map((store) => (
+                <Card key={store.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="relative h-48 w-full">
+                    <Image
+                      src={store.image_url || '/placeholder-store.jpg'}
+                      alt={store.title}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <CardHeader>
+                    <CardTitle>{store.title}</CardTitle>
+                    <CardDescription className="flex items-start gap-2">
+                      <MapPin className="h-5 w-5 shrink-0 text-slate-400" />
+                      <span>{store.address}</span>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-slate-600 line-clamp-2">
+                      {store.description || "Experience professional barbering services at our modern facility."}
+                    </p>
+                  </CardContent>
+                  <CardFooter>
+                    <Link href={`/book/${store.id}`} className="w-full">
+                      <Button className="w-full bg-yellow-400 hover:bg-yellow-500 text-black">
+                        Book Now
+                      </Button>
+                    </Link>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
