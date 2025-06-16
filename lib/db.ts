@@ -51,6 +51,16 @@ export interface Appointment {
   barber_name?: string
 }
 
+export interface BlockedTime {
+  id: string
+  store_id: string
+  blocked_date: string
+  start_time: string
+  end_time: string
+  reason: string | null
+  created_at: string
+}
+
 // Custom error for booking conflicts
 export class BookingConflictError extends Error {
   constructor(message: string) {
@@ -195,6 +205,75 @@ export async function deleteService(serviceId: string) {
   await sql`DELETE FROM services WHERE id = ${serviceId}`
 }
 
+// Blocked times functions
+export async function createBlockedTime(
+  storeId: string,
+  blockedDate: string,
+  startTime: string,
+  endTime: string,
+  reason?: string,
+) {
+  const result = await sql`
+    INSERT INTO blocked_times (store_id, blocked_date, start_time, end_time, reason)
+    VALUES (${storeId}, ${blockedDate}, ${startTime}, ${endTime}, ${reason || null})
+    RETURNING *
+  `
+  return result[0]
+}
+
+export async function getBlockedTimesByStoreId(storeId: string) {
+  const result = await sql`
+    SELECT * FROM blocked_times 
+    WHERE store_id = ${storeId} 
+    ORDER BY blocked_date DESC, start_time ASC
+  `
+  return result
+}
+
+export async function getBlockedTimesByStoreIdAndDate(storeId: string, date: string) {
+  const result = await sql`
+    SELECT * FROM blocked_times 
+    WHERE store_id = ${storeId} AND blocked_date = ${date}
+    ORDER BY start_time ASC
+  `
+  return result
+}
+
+export async function deleteBlockedTime(blockedTimeId: string) {
+  await sql`DELETE FROM blocked_times WHERE id = ${blockedTimeId}`
+}
+
+// Check if a time slot conflicts with blocked times
+export async function checkTimeSlotAgainstBlockedTimes(
+  storeId: string,
+  appointmentDate: string,
+  appointmentTime: string,
+  serviceDuration: number,
+): Promise<boolean> {
+  const blockedTimes = await getBlockedTimesByStoreIdAndDate(storeId, appointmentDate)
+
+  // Convert appointment time to minutes for calculation
+  const [hours, minutes] = appointmentTime.split(":").map(Number)
+  const appointmentMinutes = hours * 60 + minutes
+  const appointmentEndMinutes = appointmentMinutes + serviceDuration
+
+  // Check each blocked time period for overlap
+  for (const blocked of blockedTimes) {
+    const [blockedStartHours, blockedStartMinutes] = blocked.start_time.split(":").map(Number)
+    const [blockedEndHours, blockedEndMinutes] = blocked.end_time.split(":").map(Number)
+
+    const blockedStartMinutesCalc = blockedStartHours * 60 + blockedStartMinutes
+    const blockedEndMinutesCalc = blockedEndHours * 60 + blockedEndMinutes
+
+    // Check if appointment overlaps with blocked time
+    if (appointmentMinutes < blockedEndMinutesCalc && appointmentEndMinutes > blockedStartMinutesCalc) {
+      return false // Conflict found
+    }
+  }
+
+  return true // No conflict
+}
+
 // Appointment functions
 export async function getAppointmentsByStoreId(storeId: string) {
   const result = await sql`
@@ -313,6 +392,21 @@ export async function createAppointment(
       )
     }
 
+    // Check against blocked times
+    const serviceDuration = await getServiceDuration(serviceId)
+    const noBlockedTimeConflict = await checkTimeSlotAgainstBlockedTimes(
+      storeId,
+      appointmentDate,
+      appointmentTime,
+      serviceDuration,
+    )
+
+    if (!noBlockedTimeConflict) {
+      throw new BookingConflictError(
+        "This time slot is blocked and not available for booking. Please select a different time.",
+      )
+    }
+
     // Attempt to create the appointment
     const result = await sql`
       INSERT INTO appointments (store_id, service_id, client_name, client_email, client_phone, appointment_date, appointment_time, notes)
@@ -365,9 +459,10 @@ export async function getAppointmentsByStoreIdAndDate(storeId: string, date: str
   return result
 }
 
-// Get all booked time slots for a specific date (including overlapping times)
+// Get all booked time slots for a specific date (including overlapping times and blocked times)
 export async function getBookedTimeSlots(storeId: string, date: string): Promise<string[]> {
   const appointments = await getAppointmentsByStoreIdAndDate(storeId, date)
+  const blockedTimes = await getBlockedTimesByStoreIdAndDate(storeId, date)
   const bookedSlots = new Set<string>()
 
   // Standard time slots (every 30 minutes from 9:00 to 17:30)
@@ -392,6 +487,7 @@ export async function getBookedTimeSlots(storeId: string, date: string): Promise
     "17:30",
   ]
 
+  // Mark slots blocked by appointments
   for (const appointment of appointments) {
     const [hours, minutes] = appointment.appointment_time.split(":").map(Number)
     const startMinutes = hours * 60 + minutes
@@ -405,6 +501,26 @@ export async function getBookedTimeSlots(storeId: string, date: string): Promise
 
       // Check if this slot overlaps with the appointment
       if (slotStart < endMinutes && slotEnd > startMinutes) {
+        bookedSlots.add(slot)
+      }
+    }
+  }
+
+  // Mark slots blocked by blocked times
+  for (const blockedTime of blockedTimes) {
+    const [startHours, startMinutes] = blockedTime.start_time.split(":").map(Number)
+    const [endHours, endMinutes] = blockedTime.end_time.split(":").map(Number)
+    const blockedStartMinutes = startHours * 60 + startMinutes
+    const blockedEndMinutes = endHours * 60 + endMinutes
+
+    // Mark all time slots that overlap with this blocked time as booked
+    for (const slot of timeSlots) {
+      const [slotHours, slotMinutes] = slot.split(":").map(Number)
+      const slotStart = slotHours * 60 + slotMinutes
+      const slotEnd = slotStart + 30 // Each slot is 30 minutes
+
+      // Check if this slot overlaps with the blocked time
+      if (slotStart < blockedEndMinutes && slotEnd > blockedStartMinutes) {
         bookedSlots.add(slot)
       }
     }

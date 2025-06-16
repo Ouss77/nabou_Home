@@ -6,55 +6,63 @@ import { Badge } from "@/components/ui/badge"
 import { Scissors, Calendar, Users, Star, Clock, MapPin } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { useLanguage } from "@/components/language-provider"
+import { LanguageSelector } from "@/components/language-selector"
+
 interface Store {
-  id: string;
-  title: string;
-  address: string;
-  description: string;
-  image_url: string;
+  id: string
+  title: string
+  address: string
+  description: string
+  image_url: string
 }
+
 export default function HomePage() {
-   const [stores, setStores] = useState<Store[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { t } = useLanguage()
+  const [stores, setStores] = useState<Store[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     async function fetchStores() {
       try {
-        const response = await fetch('/api/stores');
-        const data = await response.json();
-        console.log('stores:', data);
+        const response = await fetch("/api/stores")
+        const data = await response.json()
+        console.log("stores:", data)
 
-        setStores(data);
+        setStores(data)
       } catch (error) {
-        console.error('Error fetching stores:', error);
+        console.error("Error fetching stores:", error)
       } finally {
-        setIsLoading(false);
+        setIsLoading(false)
       }
     }
 
-    fetchStores();
-  }, []);
+    fetchStores()
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Scissors className="h-8 w-8 text-slate-800" />
-            <span className="text-2xl font-bold text-slate-800">Nabou</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost">Login</Button>
-            </Link>
+<header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+  <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+    <div className="flex items-center gap-2">
+      <Scissors className="h-8 w-8 text-slate-800" />
+      <span className="text-2xl font-bold text-slate-800">{t.home.title}</span>
+    </div>
+    <div className="flex items-center gap-4">
+      <LanguageSelector />
+      <Link href="/login">
+        <Button variant="ghost">{t.nav.login}</Button>
+      </Link>
+      <Link href="/register">
+        <Button>{t.nav.subscribe || "Start for Free"}</Button>
+      </Link>
+    </div>
+  </div>
+</header>
 
-          </div>
-        </div>
-      </header>
-
-       {/* Hero Section */}
-     <section className="relative min-h-[85vh] flex items-center justify-center px-4 overflow-hidden">
+      {/* Hero Section */}
+      <section className="relative min-h-[85vh] flex items-center justify-center px-4 overflow-hidden">
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
           <Image
@@ -72,25 +80,22 @@ export default function HomePage() {
         {/* Content */}
         <div className="container mx-auto text-center relative z-10">
           <Badge variant="secondary" className="mb-4 bg-white/10 text-white border-none">
-            Professional Barber Management
+            {t.home.subtitle}
           </Badge>
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6">
-            Streamline Your
-            <span className="text-blue-400"> Barbershop</span>
+            {t.home.heroTitle.split(" ").slice(0, 2).join(" ")}
+            <span className="text-blue-400"> {t.home.heroTitle.split(" ").slice(2).join(" ")}</span>
           </h1>
-          <p className="text-xl text-slate-200 mb-8 max-w-2xl mx-auto">
-            Complete appointment management system for modern barbershops. Manage bookings, showcase services, and grow
-            your business.
-          </p>
+          <p className="text-xl text-slate-200 mb-8 max-w-2xl mx-auto">{t.home.heroSubtitle}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/admin">
               <Button size="lg" className="text-lg px-8 bg-blue-400 hover:bg-blue-500 text-black">
-                Get Started
+                {t.nav.getStarted}
               </Button>
             </Link>
             <Link href="#features">
               <Button size="lg" variant="outline" className="text-lg px-8 border-white hover:bg-white/10">
-                Learn More
+                {t.nav.learnMore}
               </Button>
             </Link>
           </div>
@@ -108,64 +113,56 @@ export default function HomePage() {
       <section id="features" className="py-20 px-4 bg-white">
         <div className="container mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-slate-800 mb-4">Everything You Need</h2>
-            <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-              Powerful features designed specifically for barbershops and their clients
-            </p>
+            <h2 className="text-4xl font-bold text-slate-800 mb-4">{t.home.features.title}</h2>
+            <p className="text-xl text-slate-600 max-w-2xl mx-auto">{t.home.features.subtitle}</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <Calendar className="h-12 w-12 text-blue-600 mb-4" />
-                <CardTitle>Smart Scheduling</CardTitle>
-                <CardDescription>
-                  Intuitive calendar and table views for managing appointments efficiently
-                </CardDescription>
+                <CardTitle>{t.home.features.smartScheduling.title}</CardTitle>
+                <CardDescription>{t.home.features.smartScheduling.description}</CardDescription>
               </CardHeader>
             </Card>
 
             <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <Users className="h-12 w-12 text-green-600 mb-4" />
-                <CardTitle>Client Management</CardTitle>
-                <CardDescription>Easy booking system for clients with contact information tracking</CardDescription>
+                <CardTitle>{t.home.features.clientManagement.title}</CardTitle>
+                <CardDescription>{t.home.features.clientManagement.description}</CardDescription>
               </CardHeader>
             </Card>
 
             <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <Scissors className="h-12 w-12 text-purple-600 mb-4" />
-                <CardTitle>Service Showcase</CardTitle>
-                <CardDescription>
-                  Beautiful public pages to display services, prices, and store information
-                </CardDescription>
+                <CardTitle>{t.home.features.serviceShowcase.title}</CardTitle>
+                <CardDescription>{t.home.features.serviceShowcase.description}</CardDescription>
               </CardHeader>
             </Card>
 
             <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <Star className="h-12 w-12 text-yellow-600 mb-4" />
-                <CardTitle>Professional Design</CardTitle>
-                <CardDescription>Modern, responsive design that looks great on all devices</CardDescription>
+                <CardTitle>{t.home.features.professionalDesign.title}</CardTitle>
+                <CardDescription>{t.home.features.professionalDesign.description}</CardDescription>
               </CardHeader>
             </Card>
 
             <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <Clock className="h-12 w-12 text-red-600 mb-4" />
-                <CardTitle>Real-time Updates</CardTitle>
-                <CardDescription>Instant notifications and updates for new appointments</CardDescription>
+                <CardTitle>{t.home.features.realTimeUpdates.title}</CardTitle>
+                <CardDescription>{t.home.features.realTimeUpdates.description}</CardDescription>
               </CardHeader>
             </Card>
 
             <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <MapPin className="h-12 w-12 text-indigo-600 mb-4" />
-                <CardTitle>Multi-location</CardTitle>
-                <CardDescription>
-                  Support for multiple barbers and locations with centralized management
-                </CardDescription>
+                <CardTitle>{t.home.features.multiLocation.title}</CardTitle>
+                <CardDescription>{t.home.features.multiLocation.description}</CardDescription>
               </CardHeader>
             </Card>
           </div>
@@ -173,11 +170,11 @@ export default function HomePage() {
       </section>
 
       {/* Demo Section */}
-    <section className="py-20 px-4 bg-slate-50">
+      <section className="py-20 px-4 bg-slate-50">
         <div className="container mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-slate-800 mb-4">Our Barbershops</h2>
-            <p className="text-xl text-slate-600">Find and book your perfect barbershop</p>
+            <h2 className="text-4xl font-bold text-slate-800 mb-4">{t.home.ourBarbershops}</h2>
+            <p className="text-xl text-slate-600">{t.home.findAndBook}</p>
           </div>
 
           {isLoading ? (
@@ -190,7 +187,7 @@ export default function HomePage() {
                 <Card key={store.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="relative h-48 w-full">
                     <Image
-                      src={store.image_url || '/placeholder-store.jpg'}
+                      src={store.image_url || "/placeholder-store.jpg"}
                       alt={store.title}
                       fill
                       className="object-cover"
@@ -210,9 +207,7 @@ export default function HomePage() {
                   </CardContent>
                   <CardFooter>
                     <Link href={`/book/${store.id}`} className="w-full">
-                      <Button className="w-full bg-yellow-400 hover:bg-yellow-500 text-black">
-                        Book Now
-                      </Button>
+                      <Button className="w-full bg-yellow-400 hover:bg-yellow-500 text-black">{t.home.bookNow}</Button>
                     </Link>
                   </CardFooter>
                 </Card>
@@ -225,13 +220,11 @@ export default function HomePage() {
       {/* CTA Section */}
       <section className="py-20 px-4 bg-slate-800 text-white">
         <div className="container mx-auto text-center">
-          <h2 className="text-4xl font-bold mb-4">Ready to Transform Your Barbershop?</h2>
-          <p className="text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
-            Join hundreds of barbers who have streamlined their business with BarberBook
-          </p>
+          <h2 className="text-4xl font-bold mb-4">{t.home.readyToTransform}</h2>
+          <p className="text-xl text-slate-300 mb-8 max-w-2xl mx-auto">{t.home.readyDescription}</p>
           <Link href="/admin">
             <Button size="lg" variant="secondary" className="text-lg px-8">
-              Start Free Trial
+              {t.home.startFreeTrial}
             </Button>
           </Link>
         </div>
@@ -243,9 +236,9 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center gap-2 mb-4 md:mb-0">
               <Scissors className="h-6 w-6" />
-              <span className="text-xl font-bold">BarberBook</span>
+              <span className="text-xl font-bold">{t.home.title}</span>
             </div>
-            <div className="text-slate-400">© 2024 BarberBook. All rights reserved.</div>
+            <div className="text-slate-400">{t.home.copyright}</div>
           </div>
         </div>
       </footer>

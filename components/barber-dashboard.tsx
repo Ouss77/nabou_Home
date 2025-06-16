@@ -1,17 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Calendar, Store, Users, LogOut, Scissors, Plus, ExternalLink, Settings } from "lucide-react"
+import { Calendar, Store, Users, LogOut, Scissors, Plus, ExternalLink, Settings, Clock, Copy } from "lucide-react"
 import { StoreSetupDialog } from "@/components/store-setup-dialog"
 import { ServiceManagementDialog } from "@/components/service-management-dialog"
+import { BlockTimeDialog } from "@/components/block-time-dialog"
 import { AppointmentCalendar } from "@/components/appointment-calendar"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useLanguage } from "@/components/language-provider"
+import { LanguageSelector } from "@/components/language-selector"
+import { useToast } from "@/hooks/use-toast"
 
 interface User {
   id: string
@@ -49,6 +53,16 @@ interface Appointment {
   notes: string
 }
 
+interface BlockedTime {
+  id: string
+  store_id: string
+  blocked_date: string
+  start_time: string
+  end_time: string
+  reason: string | null
+  created_at: string
+}
+
 interface BarberDashboardProps {
   user: User
   store: StoreProps | null
@@ -57,13 +71,62 @@ interface BarberDashboardProps {
 }
 
 export function BarberDashboard({ user, store, services, appointments }: BarberDashboardProps) {
+  const { t } = useLanguage()
+  const { toast } = useToast()
   const [showStoreSetup, setShowStoreSetup] = useState(false)
   const [showServiceManagement, setShowServiceManagement] = useState(false)
+  const [showBlockTime, setShowBlockTime] = useState(false)
+  const [blockedTimes, setBlockedTimes] = useState<BlockedTime[]>([])
+  const [loadingBlockedTimes, setLoadingBlockedTimes] = useState(false)
   const router = useRouter()
+
+  // Fetch blocked times when store is available
+  useEffect(() => {
+    if (store?.id) {
+      fetchBlockedTimes()
+    }
+  }, [store?.id])
+
+  const fetchBlockedTimes = async () => {
+    if (!store?.id) return
+
+    setLoadingBlockedTimes(true)
+    try {
+      const response = await fetch(`/api/barber/blocked-times?storeId=${store.id}`)
+      const data = await response.json()
+      if (response.ok) {
+        setBlockedTimes(data.blockedTimes || [])
+      }
+    } catch (error) {
+      console.error("Failed to fetch blocked times:", error)
+    } finally {
+      setLoadingBlockedTimes(false)
+    }
+  }
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" })
     router.push("/")
+  }
+
+  const handleCopyLink = async () => {
+    if (store?.id) {
+      const publicPageUrl = `${window.location.origin}/book/${store.id}`
+      try {
+        await navigator.clipboard.writeText(publicPageUrl)
+        toast({
+          title: t.common.linkCopied,
+          description: publicPageUrl,
+        })
+      } catch (err) {
+        console.error("Failed to copy link:", err)
+        toast({
+          title: t.common.error,
+          description: "Failed to copy link to clipboard.",
+          variant: "destructive",
+        })
+      }
+    }
   }
 
   const todayAppointments = appointments.filter(
@@ -77,52 +140,88 @@ export function BarberDashboard({ user, store, services, appointments }: BarberD
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-white border-b">
-        <div className="px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2">
+      <header className="bg-white border-b sticky top-0 z-50">
+        <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4 flex-nowrap overflow-x-auto overflow-y-hidden no-scrollbar">
+          {/* Left Section - Always in line */}
+          <div className="flex items-center gap-3 shrink-0">
+            <Link href="/" className="flex items-center gap-2 hover:gap-3 transition-all">
               <Scissors className="h-8 w-8 text-slate-800" />
-              <span className="text-2xl font-bold text-slate-800">BarberBook</span>
+              <span className="text-2xl font-bold whitespace-nowrap text-slate-800">BarberBook</span>
             </Link>
-            <Badge variant="secondary">Barber</Badge>
+            <Badge variant="secondary" className="whitespace-nowrap">
+              {t.nav.barber}
+            </Badge>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-600">Welcome, {user.name}</span>
+
+          {/* Right Section - Stays in single line whenever possible */}
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+            {/* User greeting - disappears on smallest screens */}
+            <span className="text-sm text-slate-600 whitespace-nowrap hidden xs:inline">
+              {t.barberDashboard.welcome}, <span className="font-medium">{user.name}</span>
+            </span>
+
+            {/* Public page and Copy Link buttons - remains compact */}
             {store && (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/book/${store.id}`} target="_blank">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View Public Page
-                </Link>
-              </Button>
+              <>
+                <Button variant="outline" size="sm" asChild className="whitespace-nowrap shrink-0">
+                  <Link href={`/book/${store.id}`} target="_blank">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">{t.barberDashboard.viewPublicPage}</span>
+                    <span className="sm:hidden">Public Page</span>
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleCopyLink} className="whitespace-nowrap shrink-0">
+                  <Copy className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">{t.barberDashboard.copyLink}</span>
+                  <span className="sm:hidden">Copy</span>
+                </Button>
+              </>
             )}
-            <Button variant="outline" size="sm" onClick={handleLogout}>
+
+            {/* Language selector - always visible */}
+            <div className="shrink-0">
+              <LanguageSelector />
+            </div>
+
+            {/* Logout button - remains compact */}
+            <Button variant="outline" size="sm" onClick={handleLogout} className="whitespace-nowrap shrink-0">
               <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              <span className="hidden sm:inline">{t.nav.logout}</span>
+              <span className="sm:hidden">Exit</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="p-6">
+      <style jsx>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
+
+      <div className="p-4 sm:p-6">
         {!store ? (
           // Store Setup Required
           <div className="max-w-2xl mx-auto text-center py-12">
             <Store className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">Set Up Your Store</h2>
-            <p className="text-slate-600 mb-6">Create your barbershop profile to start accepting appointments</p>
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">{t.barberDashboard.setUpStore}</h2>
+            <p className="text-slate-600 mb-6">{t.barberDashboard.createProfile}</p>
             <Button onClick={() => setShowStoreSetup(true)} size="lg">
               <Plus className="h-4 w-4 mr-2" />
-              Create Store
+              {t.barberDashboard.createStore}
             </Button>
           </div>
         ) : (
           <>
             {/* Stats Cards */}
-            <div className="grid md:grid-cols-4 gap-6 mb-8">
+            <div className="hidden md:grid md:grid-cols-4 gap-6 mb-8">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Today's Appointments</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t.barberDashboard.todayAppointments}</CardTitle>
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -132,7 +231,7 @@ export function BarberDashboard({ user, store, services, appointments }: BarberD
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t.barberDashboard.totalAppointments}</CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -142,7 +241,7 @@ export function BarberDashboard({ user, store, services, appointments }: BarberD
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Services</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t.barberDashboard.services}</CardTitle>
                   <Scissors className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -152,7 +251,7 @@ export function BarberDashboard({ user, store, services, appointments }: BarberD
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t.barberDashboard.totalRevenue}</CardTitle>
                   <Store className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -164,51 +263,53 @@ export function BarberDashboard({ user, store, services, appointments }: BarberD
             {/* Main Content */}
             <Tabs defaultValue="appointments" className="space-y-6">
               <TabsList>
-                <TabsTrigger value="appointments">Appointments</TabsTrigger>
-                <TabsTrigger value="calendar">Calendar</TabsTrigger>
-                <TabsTrigger value="store">Store Settings</TabsTrigger>
+                <TabsTrigger value="appointments">{t.admin.appointments}</TabsTrigger>
+                <TabsTrigger value="calendar">{t.barberDashboard.appointmentCalendar}</TabsTrigger>
+                <TabsTrigger value="store">{t.barberDashboard.storeInformation}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="appointments">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Recent Appointments</CardTitle>
-                    <CardDescription>View and manage your upcoming appointments</CardDescription>
+                    <CardTitle>{t.barberDashboard.recentAppointments}</CardTitle>
+                    <CardDescription>{t.barberDashboard.viewManage}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Client</TableHead>
-                          <TableHead>Service</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Time</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Price</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {appointments.map((appointment) => (
-                          <TableRow key={appointment.id}>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">{appointment.client_name}</div>
-                                <div className="text-sm text-muted-foreground">{appointment.client_email}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>{appointment.service_name}</TableCell>
-                            <TableCell>{new Date(appointment.appointment_date).toLocaleDateString()}</TableCell>
-                            <TableCell>{appointment.appointment_time}</TableCell>
-                            <TableCell>
-                              <Badge variant={appointment.status === "confirmed" ? "default" : "secondary"}>
-                                {appointment.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>${appointment.service_price}</TableCell>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>{t.admin.client}</TableHead>
+                            <TableHead>{t.booking.service}</TableHead>
+                            <TableHead>{t.booking.date}</TableHead>
+                            <TableHead>{t.booking.time}</TableHead>
+                            <TableHead>{t.admin.status}</TableHead>
+                            <TableHead>{t.booking.price}</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {appointments.map((appointment) => (
+                            <TableRow key={appointment.id}>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">{appointment.client_name}</div>
+                                  <div className="text-sm text-muted-foreground">{appointment.client_email}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell>{appointment.service_name}</TableCell>
+                              <TableCell>{new Date(appointment.appointment_date).toLocaleDateString()}</TableCell>
+                              <TableCell>{appointment.appointment_time}</TableCell>
+                              <TableCell>
+                                <Badge variant={appointment.status === "confirmed" ? "default" : "secondary"}>
+                                  {appointment.status === "confirmed" ? t.admin.confirmed : t.admin.pending}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>${appointment.service_price}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -216,8 +317,16 @@ export function BarberDashboard({ user, store, services, appointments }: BarberD
               <TabsContent value="calendar">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Appointment Calendar</CardTitle>
-                    <CardDescription>View your appointments in calendar format</CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>{t.barberDashboard.appointmentCalendar}</CardTitle>
+                        <CardDescription>{t.barberDashboard.calendarFormat}</CardDescription>
+                      </div>
+                      <Button onClick={() => setShowBlockTime(true)}>
+                        <Clock className="h-4 w-4 mr-2" />
+                        {t.blockTime.blockTime}
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <AppointmentCalendar appointments={appointments} />
@@ -231,12 +340,12 @@ export function BarberDashboard({ user, store, services, appointments }: BarberD
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle>Store Information</CardTitle>
-                          <CardDescription>Manage your store details and settings</CardDescription>
+                          <CardTitle>{t.barberDashboard.storeInformation}</CardTitle>
+                          <CardDescription>{t.barberDashboard.manageStore}</CardDescription>
                         </div>
                         <Button onClick={() => setShowStoreSetup(true)} variant="outline">
                           <Settings className="h-4 w-4 mr-2" />
-                          Edit Store
+                          {t.barberDashboard.editStore}
                         </Button>
                       </div>
                     </CardHeader>
@@ -255,12 +364,12 @@ export function BarberDashboard({ user, store, services, appointments }: BarberD
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle>Services</CardTitle>
-                          <CardDescription>Manage your services and pricing</CardDescription>
+                          <CardTitle>{t.barberDashboard.services}</CardTitle>
+                          <CardDescription>{t.barberDashboard.managePricing}</CardDescription>
                         </div>
                         <Button onClick={() => setShowServiceManagement(true)}>
                           <Plus className="h-4 w-4 mr-2" />
-                          Manage Services
+                          {t.barberDashboard.manageServices}
                         </Button>
                       </div>
                     </CardHeader>
@@ -271,7 +380,9 @@ export function BarberDashboard({ user, store, services, appointments }: BarberD
                             <div>
                               <h4 className="font-medium">{service.name}</h4>
                               <p className="text-sm text-muted-foreground">{service.description}</p>
-                              <p className="text-sm text-muted-foreground">{service.duration_minutes} minutes</p>
+                              <p className="text-sm text-muted-foreground">
+                                {service.duration_minutes} {t.booking.minutes}
+                              </p>
                             </div>
                             <div className="text-lg font-bold">${service.price}</div>
                           </div>
@@ -294,13 +405,26 @@ export function BarberDashboard({ user, store, services, appointments }: BarberD
       />
 
       {store && (
-        <ServiceManagementDialog
-          open={showServiceManagement}
-          onOpenChange={setShowServiceManagement}
-          storeId={store.id}
-          services={services}
-          onSuccess={() => router.refresh()}
-        />
+        <>
+          <ServiceManagementDialog
+            open={showServiceManagement}
+            onOpenChange={setShowServiceManagement}
+            storeId={store.id}
+            services={services}
+            onSuccess={() => router.refresh()}
+          />
+
+          <BlockTimeDialog
+            open={showBlockTime}
+            onOpenChange={setShowBlockTime}
+            storeId={store.id}
+            blockedTimes={blockedTimes}
+            onSuccess={() => {
+              fetchBlockedTimes()
+              router.refresh()
+            }}
+          />
+        </>
       )}
     </div>
   )

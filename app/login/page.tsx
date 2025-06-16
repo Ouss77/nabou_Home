@@ -14,7 +14,6 @@ export default function LoginPage() {
             <Scissors className="h-8 w-8" />
             BarberBook
           </Link>
-          <p className="text-slate-600 mt-2">Sign in to your account</p>
         </div>
         <LoginForm />
       </div>

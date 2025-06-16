@@ -10,6 +10,8 @@ import { Users, Calendar, Plus, LogOut, Scissors } from "lucide-react"
 import { CreateBarberDialog } from "@/components/create-barber-dialog"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useLanguage } from "@/components/language-provider"
+import { LanguageSelector } from "@/components/language-selector"
 
 interface User {
   id: string
@@ -46,6 +48,7 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ user, barbers, appointments }: AdminDashboardProps) {
+  const { t } = useLanguage()
   const [showCreateBarber, setShowCreateBarber] = useState(false)
   const router = useRouter()
 
@@ -69,13 +72,16 @@ export function AdminDashboard({ user, barbers, appointments }: AdminDashboardPr
               <Scissors className="h-8 w-8 text-slate-800" />
               <span className="text-2xl font-bold text-slate-800">BarberBook</span>
             </Link>
-            <Badge variant="secondary">Admin</Badge>
+            <Badge variant="secondary">{t.nav.admin}</Badge>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-600">Welcome, {user.name}</span>
+            <span className="text-sm text-slate-600">
+              {t.admin.welcome}, {user.name}
+            </span>
+            <LanguageSelector />
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              {t.nav.logout}
             </Button>
           </div>
         </div>
@@ -86,7 +92,7 @@ export function AdminDashboard({ user, barbers, appointments }: AdminDashboardPr
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Barbers</CardTitle>
+              <CardTitle className="text-sm font-medium">{t.admin.totalBarbers}</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -96,7 +102,7 @@ export function AdminDashboard({ user, barbers, appointments }: AdminDashboardPr
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
+              <CardTitle className="text-sm font-medium">{t.admin.totalAppointments}</CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -106,7 +112,7 @@ export function AdminDashboard({ user, barbers, appointments }: AdminDashboardPr
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Today's Appointments</CardTitle>
+              <CardTitle className="text-sm font-medium">{t.admin.todayAppointments}</CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -118,8 +124,8 @@ export function AdminDashboard({ user, barbers, appointments }: AdminDashboardPr
         {/* Main Content */}
         <Tabs defaultValue="barbers" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="barbers">Barbers</TabsTrigger>
-            <TabsTrigger value="appointments">All Appointments</TabsTrigger>
+            <TabsTrigger value="barbers">{t.admin.barbers}</TabsTrigger>
+            <TabsTrigger value="appointments">{t.admin.allAppointments}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="barbers">
@@ -127,12 +133,12 @@ export function AdminDashboard({ user, barbers, appointments }: AdminDashboardPr
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Barbers</CardTitle>
-                    <CardDescription>Manage barber accounts and view their statistics</CardDescription>
+                    <CardTitle>{t.admin.barbers}</CardTitle>
+                    <CardDescription>{t.admin.manageBarbers}</CardDescription>
                   </div>
                   <Button onClick={() => setShowCreateBarber(true)}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Barber
+                    {t.admin.addBarber}
                   </Button>
                 </div>
               </CardHeader>
@@ -140,10 +146,10 @@ export function AdminDashboard({ user, barbers, appointments }: AdminDashboardPr
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Appointments</TableHead>
-                      <TableHead>Joined</TableHead>
+                      <TableHead>{t.admin.name}</TableHead>
+                      <TableHead>{t.auth.email}</TableHead>
+                      <TableHead>{t.admin.appointments}</TableHead>
+                      <TableHead>{t.admin.joined}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -166,20 +172,20 @@ export function AdminDashboard({ user, barbers, appointments }: AdminDashboardPr
           <TabsContent value="appointments">
             <Card>
               <CardHeader>
-                <CardTitle>All Appointments</CardTitle>
-                <CardDescription>View all appointments across all barbers</CardDescription>
+                <CardTitle>{t.admin.allAppointments}</CardTitle>
+                <CardDescription>{t.admin.viewStatistics}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Barber</TableHead>
-                      <TableHead>Service</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Price</TableHead>
+                      <TableHead>{t.admin.client}</TableHead>
+                      <TableHead>{t.nav.barber}</TableHead>
+                      <TableHead>{t.booking.service}</TableHead>
+                      <TableHead>{t.booking.date}</TableHead>
+                      <TableHead>{t.booking.time}</TableHead>
+                      <TableHead>{t.admin.status}</TableHead>
+                      <TableHead>{t.booking.price}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -202,7 +208,7 @@ export function AdminDashboard({ user, barbers, appointments }: AdminDashboardPr
                         <TableCell>{appointment.appointment_time}</TableCell>
                         <TableCell>
                           <Badge variant={appointment.status === "confirmed" ? "default" : "secondary"}>
-                            {appointment.status}
+                            {appointment.status === "confirmed" ? t.admin.confirmed : t.admin.pending}
                           </Badge>
                         </TableCell>
                         <TableCell>${appointment.service_price}</TableCell>

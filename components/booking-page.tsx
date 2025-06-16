@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Scissors, MapPin, Clock, Star, Loader2, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react"
 import Image from "next/image"
+import { useLanguage } from "@/components/language-provider"
+import { LanguageSelector } from "@/components/language-selector"
 import {
   isToday,
   formatDateForDisplay,
@@ -47,6 +49,7 @@ interface BookingPageProps {
 }
 
 export function BookingPage({ store, services }: BookingPageProps) {
+  const { t } = useLanguage()
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
   const [selectedTime, setSelectedTime] = useState("")
@@ -68,15 +71,24 @@ export function BookingPage({ store, services }: BookingPageProps) {
 
   // Static time slots - moved outside to prevent recreation
   const timeSlots = [
-    "09:00", "09:30",
-    "10:00", "10:30",
-    "11:00", "11:30",
-    "12:00", "12:30",
-    "13:00", "13:30",
-    "14:00", "14:30",
-    "15:00", "15:30",
-    "16:00", "16:30",
-    "17:00", "17:30",
+    "09:00",
+    "09:30",
+    "10:00",
+    "10:30",
+    "11:00",
+    "11:30",
+    "12:00",
+    "12:30",
+    "13:00",
+    "13:30",
+    "14:00",
+    "14:30",
+    "15:00",
+    "15:30",
+    "16:00",
+    "16:30",
+    "17:00",
+    "17:30",
   ]
 
   // Update current time every minute
@@ -201,7 +213,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
     e.preventDefault()
 
     if (!selectedService || !selectedDate || !selectedTime) {
-      setError("Please select a service, date, and time")
+      setError(t.booking.selectService)
       return
     }
 
@@ -209,18 +221,18 @@ export function BookingPage({ store, services }: BookingPageProps) {
 
     // Client-side validation for past appointments
     if (isDateTimePast(dateString, selectedTime)) {
-      setError("This time slot has already passed. Please select a future time.")
+      setError(t.booking.pastTimeError)
       return
     }
 
     // Re-check if selected time is booked or passed
     if (bookedTimes.includes(selectedTime)) {
-      setError("This time slot is no longer available. Please select a different time.")
+      setError(t.booking.noLongerAvailable)
       fetchBookedTimes()
       return
     }
     if (passedTimes.includes(selectedTime)) {
-      setError("This time slot has already passed. Please select a future time.")
+      setError(t.booking.alreadyPassed)
       return
     }
 
@@ -249,20 +261,20 @@ export function BookingPage({ store, services }: BookingPageProps) {
 
       if (!response.ok) {
         if (response.status === 409 || (data.error && data.error.toLowerCase().includes("booked"))) {
-          setError(data.error || "This time slot was just booked. Please select a different time.")
+          setError(data.error || t.booking.justBooked)
           fetchBookedTimes()
         } else if (response.status === 400 && data.error && data.error.toLowerCase().includes("past")) {
-          setError(data.error || "Cannot book appointments in the past. Please select a future time.")
+          setError(data.error || t.booking.cannotBookPast)
           fetchBookedTimes()
         } else {
-          throw new Error(data.error || "Failed to book appointment")
+          throw new Error(data.error || t.booking.failedToBook)
         }
         return
       }
 
       setSuccess(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to book appointment")
+      setError(err instanceof Error ? err.message : t.booking.failedToBook)
     } finally {
       setLoading(false)
     }
@@ -311,20 +323,6 @@ export function BookingPage({ store, services }: BookingPageProps) {
   }
 
   const days = getDaysInMonth(currentMonth)
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ]
 
   if (success) {
     return (
@@ -334,27 +332,25 @@ export function BookingPage({ store, services }: BookingPageProps) {
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
               <Star className="h-8 w-8 text-green-600" />
             </div>
-            <CardTitle className="text-green-800">Booking Confirmed!</CardTitle>
-            <CardDescription>
-              Your appointment has been successfully booked. You will receive a confirmation email shortly.
-            </CardDescription>
+            <CardTitle className="text-green-800">{t.booking.bookingConfirmed}</CardTitle>
+            <CardDescription>{t.booking.confirmationEmail}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm">
               <p>
-                <strong>Service:</strong> {selectedService?.name}
+                <strong>{t.booking.service}:</strong> {selectedService?.name}
               </p>
               <p>
-                <strong>Date:</strong> {selectedDate ? formatDateForDisplay(selectedDate) : ""}
+                <strong>{t.booking.date}:</strong> {selectedDate ? formatDateForDisplay(selectedDate) : ""}
               </p>
               <p>
-                <strong>Time:</strong> {selectedTime}
+                <strong>{t.booking.time}:</strong> {selectedTime}
               </p>
               <p>
-                <strong>Duration:</strong> {selectedService?.duration_minutes} minutes
+                <strong>{t.booking.duration}:</strong> {selectedService?.duration_minutes} {t.booking.minutes}
               </p>
               <p>
-                <strong>Price:</strong> ${selectedService?.price}
+                <strong>{t.booking.price}:</strong> ${selectedService?.price}
               </p>
             </div>
           </CardContent>
@@ -367,15 +363,18 @@ export function BookingPage({ store, services }: BookingPageProps) {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <header className="bg-white border-b">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-3">
-            <Scissors className="h-8 w-8 text-slate-800" />
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800">{store.title}</h1>
-              <div className="flex items-center gap-2 text-slate-600">
-                <MapPin className="h-4 w-4" />
-                <span>{store.address}</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Scissors className="h-8 w-8 text-slate-800" />
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">{store.title}</h1>
+                <div className="flex items-center gap-2 text-slate-600">
+                  <MapPin className="h-4 w-4" />
+                  <span>{store.address}</span>
+                </div>
               </div>
             </div>
+            <LanguageSelector />
           </div>
         </div>
       </header>
@@ -393,7 +392,9 @@ export function BookingPage({ store, services }: BookingPageProps) {
                   className="w-full h-64 object-cover rounded-t-lg"
                 />
                 <div className="p-6">
-                  <h2 className="text-xl font-bold mb-2">About {store.title}</h2>
+                  <h2 className="text-xl font-bold mb-2">
+                    {t.booking.about} {store.title}
+                  </h2>
                   <p className="text-slate-600">{store.description}</p>
                 </div>
               </CardContent>
@@ -401,7 +402,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
 
             <Card>
               <CardHeader>
-                <CardTitle>Our Services</CardTitle>
+                <CardTitle>{t.booking.ourServices}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -421,7 +422,9 @@ export function BookingPage({ store, services }: BookingPageProps) {
                           <p className="text-sm text-slate-600">{service.description}</p>
                           <div className="flex items-center gap-2 mt-2">
                             <Clock className="h-4 w-4 text-slate-400" />
-                            <span className="text-sm text-slate-600">{service.duration_minutes} min</span>
+                            <span className="text-sm text-slate-600">
+                              {service.duration_minutes} {t.common.min}
+                            </span>
                           </div>
                         </div>
                         <div className="text-lg font-bold">${service.price}</div>
@@ -436,13 +439,13 @@ export function BookingPage({ store, services }: BookingPageProps) {
           <div>
             <Card>
               <CardHeader>
-                <CardTitle>Book Your Appointment</CardTitle>
-                <CardDescription>Select your preferred service, date, and time</CardDescription>
+                <CardTitle>{t.booking.bookAppointment}</CardTitle>
+                <CardDescription>{t.booking.selectPreferred}</CardDescription>
                 {selectedDate && isToday(selectedDate) && (
                   <div className="text-sm text-muted-foreground mt-2">
                     <div>
-                      Current time: {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} (
-                      {getTimezoneName()})
+                      {t.booking.currentTime}:{" "}
+                      {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} ({getTimezoneName()})
                     </div>
                   </div>
                 )}
@@ -451,26 +454,26 @@ export function BookingPage({ store, services }: BookingPageProps) {
                 <div className="px-6 pt-2 pb-0">
                   <div className="p-2 bg-blue-50 rounded-md text-blue-800 text-sm flex items-center justify-between">
                     <div>
-                      <span className="font-medium">Selected date: </span>
+                      <span className="font-medium">{t.booking.selectedDate}: </span>
                       {formatDateForDisplay(selectedDate)}
                     </div>
                     <div className="flex gap-2">
                       {isToday(selectedDate) ? (
                         <Badge variant="outline" className="bg-blue-100">
-                          Today
+                          {t.booking.today}
                         </Badge>
                       ) : isTomorrow(formatDateToString(selectedDate)) ? (
                         <Badge variant="outline" className="bg-green-100 text-green-800">
-                          Tomorrow
+                          {t.booking.tomorrow}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="bg-green-100 text-green-800">
-                          Future Date
+                          {t.booking.futureDate}
                         </Badge>
                       )}
                       {process.env.NODE_ENV === "development" && (
                         <Badge variant="outline" className="bg-gray-100 text-gray-600 text-xs">
-                          Passed: {passedTimes.length}
+                          {t.booking.passed}: {passedTimes.length}
                         </Badge>
                       )}
                     </div>
@@ -491,7 +494,9 @@ export function BookingPage({ store, services }: BookingPageProps) {
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium">{selectedService.name}</h4>
-                          <p className="text-sm text-slate-600">{selectedService.duration_minutes} minutes</p>
+                          <p className="text-sm text-slate-600">
+                            {selectedService.duration_minutes} {t.booking.minutes}
+                          </p>
                         </div>
                         <Badge>${selectedService.price}</Badge>
                       </div>
@@ -499,12 +504,12 @@ export function BookingPage({ store, services }: BookingPageProps) {
                   )}
 
                   <div className="space-y-2">
-                    <Label>Select Date</Label>
+                    <Label>{t.booking.selectDate}</Label>
                     <Card>
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
                           <h3 className="font-medium">
-                            {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+                            {t.calendar.months[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                           </h3>
                           <div className="flex gap-2">
                             <Button type="button" variant="outline" size="sm" onClick={navigateToPreviousMonth}>
@@ -518,7 +523,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-7 gap-1 mb-2">
-                          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                          {t.calendar.days.map((day) => (
                             <div key={day} className="p-2 text-center text-xs font-medium text-muted-foreground">
                               {day}
                             </div>
@@ -550,11 +555,11 @@ export function BookingPage({ store, services }: BookingPageProps) {
                   {selectedDate && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label>Select Time</Label>
+                        <Label>{t.booking.selectTime}</Label>
                         {fetchingSlots && (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Loader2 className="h-3 w-3 animate-spin" />
-                            Checking...
+                            {t.booking.checking}
                           </div>
                         )}
                       </div>
@@ -570,10 +575,10 @@ export function BookingPage({ store, services }: BookingPageProps) {
 
                           if (isSelected) variant = "default"
                           else if (isBooked) {
-                            buttonText = "Booked"
+                            buttonText = t.booking.booked
                             variant = "secondary"
                           } else if (isPassed) {
-                            buttonText = "Passed"
+                            buttonText = t.booking.passed
                             variant = "destructive"
                           }
 
@@ -593,11 +598,11 @@ export function BookingPage({ store, services }: BookingPageProps) {
                         })}
                       </div>
                       <div className="text-xs text-muted-foreground space-y-1 pt-1">
-                        {bookedTimes.length > 0 && <p>• Gray slots are booked.</p>}
-                        {passedTimes.length > 0 && <p>• Red slots have passed.</p>}
+                        {bookedTimes.length > 0 && <p>{t.booking.grayBooked}</p>}
+                        {passedTimes.length > 0 && <p>{t.booking.redPassed}</p>}
                         {process.env.NODE_ENV === "development" && (
                           <p>
-                            • Debug: Today={getCurrentDateString()}, Selected=
+                            {t.booking.debug}: {t.booking.today}={getCurrentDateString()}, Selected=
                             {selectedDate ? formatDateToString(selectedDate) : "none"}
                           </p>
                         )}
@@ -607,44 +612,44 @@ export function BookingPage({ store, services }: BookingPageProps) {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="clientName">Full Name</Label>
+                      <Label htmlFor="clientName">{t.booking.fullName}</Label>
                       <Input
                         id="clientName"
                         value={clientName}
                         onChange={(e) => setClientName(e.target.value)}
                         required
-                        placeholder="Your full name"
+                        placeholder={t.booking.yourFullName}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="clientEmail">Email</Label>
+                      <Label htmlFor="clientEmail">{t.auth.email}</Label>
                       <Input
                         id="clientEmail"
                         type="email"
                         value={clientEmail}
                         onChange={(e) => setClientEmail(e.target.value)}
                         required
-                        placeholder="your@email.com"
+                        placeholder={t.booking.yourEmail}
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="clientPhone">Phone Number (Optional)</Label>
+                    <Label htmlFor="clientPhone">{t.booking.phoneOptional}</Label>
                     <Input
                       id="clientPhone"
                       type="tel"
                       value={clientPhone}
                       onChange={(e) => setClientPhone(e.target.value)}
-                      placeholder="Your phone number"
+                      placeholder={t.booking.yourPhone}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="notes">Additional Notes (Optional)</Label>
+                    <Label htmlFor="notes">{t.booking.additionalNotes}</Label>
                     <Textarea
                       id="notes"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Any special requests or notes..."
+                      placeholder={t.booking.specialRequests}
                       rows={3}
                     />
                   </div>
@@ -655,7 +660,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
                     disabled={loading || !selectedService || !selectedDate || !selectedTime || fetchingSlots}
                   >
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Book Appointment
+                    {t.booking.bookAppointment}
                   </Button>
                 </form>
               </CardContent>

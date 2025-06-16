@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Plus, Trash2, Edit } from "lucide-react"
+import { useLanguage } from "@/components/language-provider"
 
 interface Service {
   id: string
@@ -35,6 +36,7 @@ export function ServiceManagementDialog({
   services,
   onSuccess,
 }: ServiceManagementDialogProps) {
+  const { t } = useLanguage()
   const [editingService, setEditingService] = useState<Service | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [name, setName] = useState("")
@@ -100,7 +102,7 @@ export function ServiceManagementDialog({
   }
 
   const handleDelete = async (serviceId: string) => {
-    if (!confirm("Are you sure you want to delete this service?")) return
+    if (!confirm(t.serviceManagement.deleteConfirm)) return
 
     setLoading(true)
     try {
@@ -124,8 +126,8 @@ export function ServiceManagementDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Manage Services</DialogTitle>
-          <DialogDescription>Add, edit, or remove services for your barbershop</DialogDescription>
+          <DialogTitle>{t.serviceManagement.manageServices}</DialogTitle>
+          <DialogDescription>{t.serviceManagement.addEditRemove}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -139,24 +141,26 @@ export function ServiceManagementDialog({
           {showAddForm && (
             <Card>
               <CardHeader>
-                <CardTitle>{editingService ? "Edit Service" : "Add New Service"}</CardTitle>
+                <CardTitle>
+                  {editingService ? t.serviceManagement.editService : t.serviceManagement.addNewService}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Service Name</Label>
+                      <Label htmlFor="name">{t.serviceManagement.serviceName}</Label>
                       <Input
                         id="name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required
-                        placeholder="e.g., Classic Haircut"
+                        placeholder={t.serviceManagement.exampleService}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="price">Price ($)</Label>
+                      <Label htmlFor="price">{t.booking.price} ($)</Label>
                       <Input
                         id="price"
                         type="number"
@@ -170,7 +174,7 @@ export function ServiceManagementDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="duration">Duration (minutes)</Label>
+                    <Label htmlFor="duration">{t.serviceManagement.duration}</Label>
                     <Input
                       id="duration"
                       type="number"
@@ -182,23 +186,23 @@ export function ServiceManagementDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
+                    <Label htmlFor="description">{t.store.description}</Label>
                     <Textarea
                       id="description"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Describe this service..."
+                      placeholder={t.serviceManagement.describeService}
                       rows={2}
                     />
                   </div>
 
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={resetForm}>
-                      Cancel
+                      {t.common.cancel}
                     </Button>
                     <Button type="submit" disabled={loading}>
                       {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {editingService ? "Update Service" : "Add Service"}
+                      {editingService ? t.serviceManagement.updateService : t.serviceManagement.addService}
                     </Button>
                   </div>
                 </form>
@@ -210,15 +214,15 @@ export function ServiceManagementDialog({
           {!showAddForm && (
             <Button onClick={() => setShowAddForm(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Add New Service
+              {t.serviceManagement.addNewService}
             </Button>
           )}
 
           {/* Services List */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Current Services</h3>
+            <h3 className="text-lg font-semibold">{t.serviceManagement.currentServices}</h3>
             {services.length === 0 ? (
-              <p className="text-muted-foreground">No services added yet.</p>
+              <p className="text-muted-foreground">{t.serviceManagement.noServices}</p>
             ) : (
               <div className="grid gap-4">
                 {services.map((service) => (
@@ -230,7 +234,9 @@ export function ServiceManagementDialog({
                           <p className="text-sm text-muted-foreground">{service.description}</p>
                           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                             <span>${service.price}</span>
-                            <span>{service.duration_minutes} minutes</span>
+                            <span>
+                              {service.duration_minutes} {t.booking.minutes}
+                            </span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">

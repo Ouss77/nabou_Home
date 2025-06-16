@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import { useLanguage } from "@/components/language-provider"
 
 interface Appointment {
   id: string
@@ -21,6 +22,7 @@ interface AppointmentCalendarProps {
 }
 
 export function AppointmentCalendar({ appointments }: AppointmentCalendarProps) {
+  const { t } = useLanguage()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
 
@@ -49,20 +51,6 @@ export function AppointmentCalendar({ appointments }: AppointmentCalendarProps) 
   }
 
   const days = getDaysInMonth(currentDate)
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ]
 
   const selectedDateAppointments = appointments.filter((apt) => {
     if (!selectedDate) return false
@@ -94,7 +82,7 @@ export function AppointmentCalendar({ appointments }: AppointmentCalendarProps) 
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>
-                {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+                {t.calendar.months[currentDate.getMonth()]} {currentDate.getFullYear()}
               </CardTitle>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => navigateMonth("prev")}>
@@ -108,7 +96,7 @@ export function AppointmentCalendar({ appointments }: AppointmentCalendarProps) 
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-7 gap-1 mb-4">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+              {t.calendar.days.map((day) => (
                 <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
                   {day}
                 </div>
@@ -141,11 +129,11 @@ export function AppointmentCalendar({ appointments }: AppointmentCalendarProps) 
       <div>
         <Card>
           <CardHeader>
-            <CardTitle>{selectedDate ? selectedDate.toLocaleDateString() : "Select a date"}</CardTitle>
+            <CardTitle>{selectedDate ? selectedDate.toLocaleDateString() : t.calendar.selectDate}</CardTitle>
           </CardHeader>
           <CardContent>
             {selectedDateAppointments.length === 0 ? (
-              <p className="text-muted-foreground">No appointments for this date</p>
+              <p className="text-muted-foreground">{t.calendar.noAppointments}</p>
             ) : (
               <div className="space-y-3">
                 {selectedDateAppointments.map((appointment) => (
@@ -156,7 +144,7 @@ export function AppointmentCalendar({ appointments }: AppointmentCalendarProps) 
                       <div className="text-sm text-muted-foreground">{appointment.appointment_time}</div>
                     </div>
                     <Badge variant={appointment.status === "confirmed" ? "default" : "secondary"}>
-                      {appointment.status}
+                      {appointment.status === "confirmed" ? t.admin.confirmed : t.admin.pending}
                     </Badge>
                   </div>
                 ))}

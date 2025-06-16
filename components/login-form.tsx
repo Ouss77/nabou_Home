@@ -10,8 +10,11 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
+import { useLanguage } from "@/components/language-provider"
+import { LanguageSelector } from "@/components/language-selector"
 
 export function LoginForm() {
+  const { t } = useLanguage()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -52,7 +55,11 @@ export function LoginForm() {
   return (
     <Card className="border-0 shadow-xl">
       <CardHeader>
-        <CardTitle>Sign In</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>{t.auth.signIn}</CardTitle>
+          <LanguageSelector />
+        </div>
+        <p className="text-slate-600 mt-2">{t.auth.signInToAccount}</p>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -63,42 +70,42 @@ export function LoginForm() {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t.auth.email}</Label>
             <Input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="Enter your email"
+              placeholder={t.auth.enterEmail}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t.auth.password}</Label>
             <Input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="Enter your password"
+              placeholder={t.auth.enterPassword}
             />
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Sign In
+            {t.auth.signIn}
           </Button>
         </form>
 
         <div className="mt-6 text-center text-sm text-slate-600">
-          <p>Demo Credentials:</p>
+          <p>{t.auth.demoCredentials}</p>
           <p>
-            <strong>Admin:</strong> admin@barbershop.com / admin123
+            <strong>{t.auth.admin}:</strong> admin@barbershop.com / admin123
           </p>
           <p>
-            <strong>Barber:</strong> john@barbershop.com / barber123
+            <strong>{t.auth.barber}:</strong> john@barbershop.com / barber123
           </p>
         </div>
       </CardContent>

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
+import { useLanguage } from "@/components/language-provider"
 
 interface Store {
   id: string
@@ -27,6 +28,7 @@ interface StoreSetupDialogProps {
 }
 
 export function StoreSetupDialog({ open, onOpenChange, store, onSuccess }: StoreSetupDialogProps) {
+  const { t } = useLanguage()
   const [title, setTitle] = useState(store?.title || "")
   const [address, setAddress] = useState(store?.address || "")
   const [description, setDescription] = useState(store?.description || "")
@@ -68,10 +70,8 @@ export function StoreSetupDialog({ open, onOpenChange, store, onSuccess }: Store
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{store ? "Edit Store" : "Create Your Store"}</DialogTitle>
-          <DialogDescription>
-            {store ? "Update your store information" : "Set up your barbershop profile to start accepting appointments"}
-          </DialogDescription>
+          <DialogTitle>{store ? t.store.editStore : t.store.createStore}</DialogTitle>
+          <DialogDescription>{store ? t.store.updateInformation : t.store.setupProfile}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -82,55 +82,55 @@ export function StoreSetupDialog({ open, onOpenChange, store, onSuccess }: Store
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="title">Store Name</Label>
+            <Label htmlFor="title">{t.store.storeName}</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              placeholder="e.g., Classic Cuts Barbershop"
+              placeholder={t.store.exampleName}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="address">Address</Label>
+            <Label htmlFor="address">{t.store.address}</Label>
             <Input
               id="address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               required
-              placeholder="e.g., 123 Main Street, Downtown"
+              placeholder={t.store.exampleAddress}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">{t.store.description}</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Tell clients about your barbershop..."
+              placeholder={t.store.tellClients}
               rows={3}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="imageUrl">Image URL (optional)</Label>
+            <Label htmlFor="imageUrl">{t.store.imageUrl}</Label>
             <Input
               id="imageUrl"
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://example.com/image.jpg"
+              placeholder={t.store.exampleUrl}
             />
           </div>
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t.store.cancel}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {store ? "Update Store" : "Create Store"}
+              {store ? t.store.update : t.store.create}
             </Button>
           </div>
         </form>

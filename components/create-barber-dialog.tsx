@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
+import { useLanguage } from "@/components/language-provider"
 
 interface CreateBarberDialogProps {
   open: boolean
@@ -17,6 +18,7 @@ interface CreateBarberDialogProps {
 }
 
 export function CreateBarberDialog({ open, onOpenChange, onSuccess }: CreateBarberDialogProps) {
+  const { t } = useLanguage()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -57,10 +59,8 @@ export function CreateBarberDialog({ open, onOpenChange, onSuccess }: CreateBarb
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add New Barber</DialogTitle>
-          <DialogDescription>
-            Create a new barber account. They will be able to log in and manage their store.
-          </DialogDescription>
+          <DialogTitle>{t.createBarber.addNewBarber}</DialogTitle>
+          <DialogDescription>{t.createBarber.createAccount}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -71,48 +71,48 @@ export function CreateBarberDialog({ open, onOpenChange, onSuccess }: CreateBarb
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="name">Full Name</Label>
+            <Label htmlFor="name">{t.createBarber.fullName}</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              placeholder="Enter barber's full name"
+              placeholder={t.createBarber.enterName}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t.auth.email}</Label>
             <Input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="Enter barber's email"
+              placeholder={t.createBarber.enterEmail}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t.auth.password}</Label>
             <Input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="Enter password"
+              placeholder={t.createBarber.enterPassword}
               minLength={6}
             />
           </div>
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Barber
+              {t.createBarber.createBarber}
             </Button>
           </div>
         </form>
