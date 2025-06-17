@@ -11,10 +11,10 @@ import { StoreSetupDialog } from "@/components/store-setup-dialog"
 import { ServiceManagementDialog } from "@/components/service-management-dialog"
 import { BlockTimeDialog } from "@/components/block-time-dialog"
 import { AppointmentCalendar } from "@/components/appointment-calendar"
+import { ImageUpload } from "@/components/image-upload"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useLanguage } from "@/components/language-provider"
-import { LanguageSelector } from "@/components/language-selector"
 import { useToast } from "@/hooks/use-toast"
 
 interface User {
@@ -63,27 +63,53 @@ interface BlockedTime {
   created_at: string
 }
 
+interface WorkingHours {
+  id: string
+  store_id: string
+  day_of_week: number
+  start_time: string
+  end_time: string
+  is_closed: boolean
+  created_at: string
+  updated_at: string
+}
+
+interface StoreImage {
+  id: string
+  store_id: string
+  image_data: string
+  image_name: string
+  image_type: string
+  image_size: number
+  is_primary: boolean
+  created_at: string
+}
+
 interface BarberDashboardProps {
   user: User
   store: StoreProps | null
   services: Service[]
   appointments: Appointment[]
+  workingHours: WorkingHours[]
 }
 
-export function BarberDashboard({ user, store, services, appointments }: BarberDashboardProps) {
+export function BarberDashboard({ user, store, services, appointments, workingHours }: BarberDashboardProps) {
   const { t } = useLanguage()
   const { toast } = useToast()
   const [showStoreSetup, setShowStoreSetup] = useState(false)
   const [showServiceManagement, setShowServiceManagement] = useState(false)
   const [showBlockTime, setShowBlockTime] = useState(false)
   const [blockedTimes, setBlockedTimes] = useState<BlockedTime[]>([])
+  const [storeImages, setStoreImages] = useState<StoreImage[]>([])
   const [loadingBlockedTimes, setLoadingBlockedTimes] = useState(false)
+  const [loadingImages, setLoadingImages] = useState(false)
   const router = useRouter()
 
-  // Fetch blocked times when store is available
+  // Fetch blocked times and images when store is available
   useEffect(() => {
     if (store?.id) {
       fetchBlockedTimes()
+      fetchStoreImages()
     }
   }, [store?.id])
 
@@ -101,6 +127,23 @@ export function BarberDashboard({ user, store, services, appointments }: BarberD
       console.error("Failed to fetch blocked times:", error)
     } finally {
       setLoadingBlockedTimes(false)
+    }
+  }
+
+  const fetchStoreImages = async () => {
+    if (!store?.id) return
+
+    setLoadingImages(true)
+    try {
+      const response = await fetch(`/api/barber/store-images?storeId=${store.id}`)
+      const data = await response.json()
+      if (response.ok) {
+        setStoreImages(data.images || [])
+      }
+    } catch (error) {
+      console.error("Failed to fetch store images:", error)
+    } finally {
+      setLoadingImages(false)
     }
   }
 
@@ -177,11 +220,6 @@ export function BarberDashboard({ user, store, services, appointments }: BarberD
                 </Button>
               </>
             )}
-
-            {/* Language selector - always visible */}
-            <div className="shrink-0">
-              <LanguageSelector />
-            </div>
 
             {/* Logout button - remains compact */}
             <Button variant="outline" size="sm" onClick={handleLogout} className="whitespace-nowrap shrink-0">
@@ -360,6 +398,9 @@ export function BarberDashboard({ user, store, services, appointments }: BarberD
                     </CardContent>
                   </Card>
 
+                  {/* Store Images */}
+                  <ImageUpload storeId={store.id} images={storeImages} onImagesChange={fetchStoreImages} />
+
                   <Card>
                     <CardHeader>
                       <div className="flex items-center justify-between">
@@ -387,6 +428,43 @@ export function BarberDashboard({ user, store, services, appointments }: BarberD
                             <div className="text-lg font-bold">${service.price}</div>
                           </div>
                         ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <Clock className="h-5 w-5" />
+                            Working Hours
+                          </CardTitle>
+                          <CardDescription>Your business hours for customer bookings</CardDescription>
+                        </div>
+                        <Button onClick={() => setShowStoreSetup(true)} variant="outline">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Edit Hours
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(
+                          (day, index) => {
+                            const dayHours = workingHours.find((wh) => wh.day_of_week === index)
+                            return (
+                              <div key={day} className="flex items-center justify-between p-2 border rounded">
+                                <span className="font-medium">{day}</span>
+                                <span className="text-sm text-muted-foreground">
+                                  {dayHours?.is_closed
+                                    ? "Closed"
+                                    : `${dayHours?.start_time || "09:00"} - ${dayHours?.end_time || "18:00"}`}
+                                </span>
+                              </div>
+                            )
+                          },
+                        )}
                       </div>
                     </CardContent>
                   </Card>

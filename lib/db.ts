@@ -23,6 +23,17 @@ export interface Store {
   updated_at: string
 }
 
+export interface StoreImage {
+  id: string
+  store_id: string
+  image_data: string // Base64 encoded
+  image_name: string
+  image_type: string
+  image_size: number
+  is_primary: boolean
+  created_at: string
+}
+
 export interface Service {
   id: string
   store_id: string
@@ -33,6 +44,17 @@ export interface Service {
   created_at: string
 }
 
+export interface WorkingHours {
+  id: string
+  store_id: string
+  day_of_week: number // 0 = Sunday, 6 = Saturday
+  start_time: string
+  end_time: string
+  is_closed: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface Appointment {
   id: string
   store_id: string
@@ -40,6 +62,7 @@ export interface Appointment {
   client_name: string
   client_email: string
   client_phone: string | null
+  age: number | null // Added age field
   appointment_date: string
   appointment_time: string
   status: "pending" | "confirmed" | "cancelled" | "completed"
@@ -74,6 +97,14 @@ export class PastAppointmentError extends Error {
   constructor(message: string) {
     super(message)
     this.name = "PastAppointmentError"
+  }
+}
+
+// Custom error for outside working hours
+export class OutsideWorkingHoursError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "OutsideWorkingHoursError"
   }
 }
 
@@ -160,6 +191,168 @@ export async function updateStore(
     RETURNING *
   `
   return result[0]
+}
+
+// Store Images functions
+export async function getStoreImages(storeId: string): Promise<StoreImage[]> {
+  const result = await sql<StoreImage[]>`
+    SELECT id, store_id, image_data, image_name, image_type, image_size, is_primary, created_at
+    FROM store_images 
+    WHERE store_id = ${storeId} 
+    ORDER BY is_primary DESC, created_at ASC
+  `
+  return result
+}
+
+export async function getPrimaryStoreImage(storeId: string): Promise<StoreImage | null> {
+  const result = await sql<StoreImage[]>`
+    SELECT id, store_id, image_data, image_name, image_type, image_size, is_primary, created_at
+    FROM store_images 
+    WHERE store_id = ${storeId} AND is_primary = TRUE
+    LIMIT 1
+  `
+  return result[0] || null
+}
+
+export async function addStoreImage(
+  storeId: string,
+  imageData: string,
+  imageName: string,
+  imageType: string,
+  imageSize: number,
+  isPrimary = false,
+): Promise<StoreImage> {
+  // If setting as primary, first remove primary flag from other images
+  if (isPrimary) {
+    await sql`
+      UPDATE store_images 
+      SET is_primary = FALSE 
+      WHERE store_id = ${storeId}
+    `
+  }
+
+  const result = await sql<StoreImage[]>`
+    INSERT INTO store_images (store_id, image_data, image_name, image_type, image_size, is_primary)
+    VALUES (${storeId}, ${imageData}, ${imageName}, ${imageType}, ${imageSize}, ${isPrimary})
+    RETURNING id, store_id, image_data, image_name, image_type, image_size, is_primary, created_at
+  `
+  return result[0]
+}
+
+export async function deleteStoreImage(imageId: string): Promise<void> {
+  await sql`DELETE FROM store_images WHERE id = ${imageId}`
+}
+
+export async function setPrimaryStoreImage(storeId: string, imageId: string): Promise<void> {
+  // First remove primary flag from all images for this store
+  await sql`
+    UPDATE store_images 
+    SET is_primary = FALSE 
+    WHERE store_id = ${storeId}
+  `
+
+  // Then set the specified image as primary
+  await sql`
+    UPDATE store_images 
+    SET is_primary = TRUE 
+    WHERE id = ${imageId} AND store_id = ${storeId}
+  `
+}
+
+// Working Hours functions
+export async function getWorkingHoursByStoreId(storeId: string): Promise<WorkingHours[]> {
+  const result = await sql<WorkingHours[]>`
+    SELECT id, store_id, day_of_week, 
+           TO_CHAR(start_time, 'HH24:MI') as start_time, 
+           TO_CHAR(end_time, 'HH24:MI') as end_time, 
+           is_closed, created_at, updated_at
+    FROM working_hours 
+    WHERE store_id = ${storeId} 
+    ORDER BY day_of_week
+  `
+  return result
+}
+
+export async function upsertWorkingHours(
+  storeId: string,
+  workingHours: Array<{
+    day_of_week: number
+    start_time: string
+    end_time: string
+    is_closed: boolean
+  }>,
+) {
+  try {
+    // Delete existing working hours for this store
+    await sql`DELETE FROM working_hours WHERE store_id = ${storeId}`
+
+    // Insert new working hours one by one to ensure proper formatting and prevent SQL injection
+    for (const wh of workingHours) {
+      // Ensure times are in HH:MM format before insertion
+      const startTimeFormatted = wh.start_time.substring(0, 5)
+      const endTimeFormatted = wh.end_time.substring(0, 5)
+
+      await sql`
+        INSERT INTO working_hours (store_id, day_of_week, start_time, end_time, is_closed)
+        VALUES (${storeId}, ${wh.day_of_week}, ${startTimeFormatted}, ${endTimeFormatted}, ${wh.is_closed})
+      `
+    }
+
+    return getWorkingHoursByStoreId(storeId)
+  } catch (error) {
+    console.error("Error in upsertWorkingHours:", error)
+    throw error
+  }
+}
+
+export async function getWorkingHoursForDate(storeId: string, date: string): Promise<WorkingHours | null> {
+  const dateObj = new Date(date)
+  const dayOfWeek = dateObj.getDay() // 0 = Sunday, 6 = Saturday
+
+  const result = await sql<WorkingHours[]>`
+    SELECT id, store_id, day_of_week, 
+           TO_CHAR(start_time, 'HH24:MI') as start_time, 
+           TO_CHAR(end_time, 'HH24:MI') as end_time, 
+           is_closed, created_at, updated_at
+    FROM working_hours 
+    WHERE store_id = ${storeId} AND day_of_week = ${dayOfWeek}
+  `
+
+  return result[0] || null
+}
+
+// Check if a time slot is within working hours
+export async function isTimeWithinWorkingHours(
+  storeId: string,
+  appointmentDate: string,
+  appointmentTime: string,
+): Promise<boolean> {
+  const workingHours = await getWorkingHoursForDate(storeId, appointmentDate)
+
+  // If no working hours are set, use default business hours (9:00 AM to 6:00 PM)
+  if (!workingHours) {
+    const appointmentMinutes = timeToMinutes(appointmentTime)
+    const defaultStartMinutes = 9 * 60 // 9:00 AM
+    const defaultEndMinutes = 18 * 60 // 6:00 PM
+    return appointmentMinutes >= defaultStartMinutes && appointmentMinutes < defaultEndMinutes
+  }
+
+  // If store is closed on this day
+  if (workingHours.is_closed) {
+    return false
+  }
+
+  const appointmentMinutes = timeToMinutes(appointmentTime)
+  const startMinutes = timeToMinutes(workingHours.start_time)
+  const endMinutes = timeToMinutes(workingHours.end_time)
+
+  return appointmentMinutes >= startMinutes && appointmentMinutes < endMinutes
+}
+
+// Helper function to convert time string to minutes
+function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(":").map(Number)
+  return hours * 60 + minutes
 }
 
 // Service functions
@@ -361,6 +554,7 @@ export async function createAppointment(
   appointmentDate: string,
   appointmentTime: string,
   notes?: string,
+  age?: number,
 ) {
   // Start a transaction to ensure atomicity
   try {
@@ -409,8 +603,8 @@ export async function createAppointment(
 
     // Attempt to create the appointment
     const result = await sql`
-      INSERT INTO appointments (store_id, service_id, client_name, client_email, client_phone, appointment_date, appointment_time, notes)
-      VALUES (${storeId}, ${serviceId}, ${clientName}, ${clientEmail}, ${clientPhone}, ${appointmentDate}, ${appointmentTime}, ${notes || null})
+      INSERT INTO appointments (store_id, service_id, client_name, client_email, client_phone, appointment_date, appointment_time, notes, age)
+      VALUES (${storeId}, ${serviceId}, ${clientName}, ${clientEmail}, ${clientPhone}, ${appointmentDate}, ${appointmentTime}, ${notes || null}, ${age || null})
       RETURNING *
     `
 
@@ -463,6 +657,7 @@ export async function getAppointmentsByStoreIdAndDate(storeId: string, date: str
 export async function getBookedTimeSlots(storeId: string, date: string): Promise<string[]> {
   const appointments = await getAppointmentsByStoreIdAndDate(storeId, date)
   const blockedTimes = await getBlockedTimesByStoreIdAndDate(storeId, date)
+  const workingHours = await getWorkingHoursForDate(storeId, date)
   const bookedSlots = new Set<string>()
 
   // Standard time slots (every 30 minutes from 9:00 to 17:30)
@@ -485,7 +680,34 @@ export async function getBookedTimeSlots(storeId: string, date: string): Promise
     "16:30",
     "17:00",
     "17:30",
+    "18:00",
+    "18:30",
+    "19:00",
+    "19:30",
+    "20:00",
   ]
+
+  // If store is explicitly closed on this day, mark all slots as booked
+  if (workingHours && workingHours.is_closed) {
+    return [...timeSlots]
+  }
+
+  // Use working hours if available, otherwise default to 9:00-18:00
+  let workingStartMinutes = 9 * 60 // 9:00 AM
+  let workingEndMinutes = 18 * 60 // 6:00 PM
+
+  if (workingHours && !workingHours.is_closed) {
+    workingStartMinutes = timeToMinutes(workingHours.start_time)
+    workingEndMinutes = timeToMinutes(workingHours.end_time)
+  }
+
+  // Mark slots outside working hours as booked
+  for (const slot of timeSlots) {
+    const slotMinutes = timeToMinutes(slot)
+    if (slotMinutes < workingStartMinutes || slotMinutes >= workingEndMinutes) {
+      bookedSlots.add(slot)
+    }
+  }
 
   // Mark slots blocked by appointments
   for (const appointment of appointments) {

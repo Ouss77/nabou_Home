@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
       appointmentDate,
       appointmentTime,
       notes,
+      age,
       clientTimezone,
       clientDateTime,
     } = await request.json()
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
       appointmentDate,
       appointmentTime,
       notes,
+      age,
     )
 
     return NextResponse.json({

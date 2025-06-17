@@ -241,6 +241,16 @@ export interface Translations {
     days: string[]
   }
 
+  // Working Hours
+  workingHours: {
+    title: string
+    description: string
+    open: string
+    closed: string
+    to: string
+    outsideHours: string
+  }
+
   // Common
   common: {
     loading: string
@@ -278,7 +288,7 @@ export const translations: Record<Language, Translations> = {
       learnMore: "Learn More",
     },
     home: {
-      title: "BarberBook",
+      title: "Nabou",
       subtitle: "Professional Barber Management",
       description: "Complete appointment management system for modern barbershops",
       heroTitle: "Streamline Your Barbershop",
@@ -495,6 +505,14 @@ export const translations: Record<Language, Translations> = {
       ],
       days: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
     },
+    workingHours: {
+      title: "Working Hours",
+      description: "Set your business hours for each day of the week",
+      open: "Open",
+      closed: "Closed",
+      to: "to",
+      outsideHours: "This time slot is outside of working hours. Please select a time during business hours.",
+    },
     common: {
       loading: "Loading...",
       error: "Error",
@@ -529,7 +547,7 @@ export const translations: Record<Language, Translations> = {
       learnMore: "En savoir plus",
     },
     home: {
-      title: "BarberBook",
+      title: "Nabou",
       subtitle: "Gestion Professionnelle de Salon de Coiffure",
       description: "Système complet de gestion de rendez-vous pour salons de coiffure modernes",
       heroTitle: "Optimisez Votre Salon de Coiffure",
@@ -745,6 +763,15 @@ export const translations: Record<Language, Translations> = {
         "Décembre",
       ],
       days: ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
+    },
+    workingHours: {
+      title: "Heures d'Ouverture",
+      description: "Définissez vos heures d'ouverture pour chaque jour de la semaine",
+      open: "Ouvert",
+      closed: "Fermé",
+      to: "à",
+      outsideHours:
+        "Ce créneau horaire est en dehors des heures d'ouverture. Veuillez sélectionner une heure pendant les heures d'ouverture.",
     },
     common: {
       loading: "Chargement...",

@@ -13,6 +13,7 @@ export default function RegisterPage() {
   const { t } = useLanguage()
   const [formData, setFormData] = useState({
     fullName: "",
+    phone:"",
     email: "",
     yearsOfExperience: ""
   })
@@ -53,7 +54,7 @@ export default function RegisterPage() {
           <CardHeader>
             <CardTitle className="text-2xl text-center">Start Your Free Trial</CardTitle>
             <CardDescription className="text-center">
-              Fill out the form below to get started with your free trial
+              Fill out the form below and you will receive the credentiel in your email to get started with your free trial and create your store
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -77,6 +78,17 @@ export default function RegisterPage() {
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+
+                            <div className="space-y-2">
+                <Label htmlFor="email">Phone Number</Label>
+                <Input
+                  id="phone"
+                  type="number"
+                  required
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 />
               </div>
 

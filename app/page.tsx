@@ -43,7 +43,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
-<header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+<header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-999">
   <div className="container mx-auto px-4 py-4 flex items-center justify-between">
     <div className="flex items-center gap-2">
       <Scissors className="h-8 w-8 text-slate-800" />
@@ -52,7 +52,7 @@ export default function HomePage() {
     <div className="flex items-center gap-4">
       <LanguageSelector />
       <Link href="/login">
-        <Button variant="ghost">{t.nav.login}</Button>
+        <Button className="border-2" variant="ghost">{t.nav.login}</Button>
       </Link>
       <Link href="/register">
         <Button>{t.nav.subscribe || "Start for Free"}</Button>

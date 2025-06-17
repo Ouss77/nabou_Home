@@ -1,5 +1,4 @@
 "use client"
-
 import type React from "react"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,10 +8,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Scissors, MapPin, Clock, Star, Loader2, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react"
+import { Scissors, MapPin, Clock, Star, Loader2, ChevronLeft, ChevronRight, AlertTriangle, Images } from "lucide-react"
 import Image from "next/image"
 import { useLanguage } from "@/components/language-provider"
 import { LanguageSelector } from "@/components/language-selector"
+import { ImageGallery } from "@/components/image-gallery"
 import {
   isToday,
   formatDateForDisplay,
@@ -43,6 +43,17 @@ interface Service {
   duration_minutes: number
 }
 
+interface StoreImage {
+  id: string
+  store_id: string
+  image_data: string
+  image_name: string
+  image_type: string
+  image_size: number
+  is_primary: boolean
+  created_at: string
+}
+
 interface BookingPageProps {
   store: Store
   services: Service[]
@@ -54,6 +65,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
   const [selectedTime, setSelectedTime] = useState("")
   const [clientName, setClientName] = useState("")
+  const [age, setAge] = useState("")
   const [clientEmail, setClientEmail] = useState("")
   const [clientPhone, setClientPhone] = useState("")
   const [notes, setNotes] = useState("")
@@ -65,6 +77,9 @@ export function BookingPage({ store, services }: BookingPageProps) {
   const [passedTimes, setPassedTimes] = useState<string[]>([])
   const [fetchingSlots, setFetchingSlots] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [storeImages, setStoreImages] = useState<StoreImage[]>([])
+  const [showGallery, setShowGallery] = useState(false)
+  const [loadingImages, setLoadingImages] = useState(false)
 
   const prevSelectedDateRef = useRef<Date | null>(null)
   const lastFetchTimeRef = useRef<number>(0)
@@ -89,7 +104,32 @@ export function BookingPage({ store, services }: BookingPageProps) {
     "16:30",
     "17:00",
     "17:30",
+    "18:00",
+    "18:30",
+    "19:00",
+    "19:30",
+    "20:00",
   ]
+
+  // Fetch store images
+  useEffect(() => {
+    fetchStoreImages()
+  }, [store.id])
+
+  const fetchStoreImages = async () => {
+    setLoadingImages(true)
+    try {
+      const response = await fetch(`/api/stores/${store.id}/images`)
+      const data = await response.json()
+      if (response.ok) {
+        setStoreImages(data.images || [])
+      }
+    } catch (error) {
+      console.error("Failed to fetch store images:", error)
+    } finally {
+      setLoadingImages(false)
+    }
+  }
 
   // Update current time every minute
   useEffect(() => {
@@ -252,6 +292,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
           appointmentDate: dateString,
           appointmentTime: selectedTime,
           notes,
+          age,
           clientTimezone: getTimezoneName(),
           clientDateTime: new Date().toISOString(),
         }),
@@ -324,6 +365,12 @@ export function BookingPage({ store, services }: BookingPageProps) {
 
   const days = getDaysInMonth(currentMonth)
 
+  // Get primary image or fallback
+  const primaryImage = storeImages.find((img) => img.is_primary) || storeImages[0]
+  const displayImage = primaryImage
+    ? `data:${primaryImage.image_type};base64,${primaryImage.image_data}`
+    : store.image_url || "/placeholder.svg?height=300&width=500"
+
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
@@ -384,13 +431,25 @@ export function BookingPage({ store, services }: BookingPageProps) {
           <div className="space-y-6">
             <Card>
               <CardContent className="p-0">
-                <Image
-                  src={store.image_url || "/placeholder.svg?height=300&width=500&query=modern+barbershop+interior"}
-                  alt={store.title}
-                  width={500}
-                  height={300}
-                  className="w-full h-64 object-cover rounded-t-lg"
-                />
+                <div className="relative">
+                  <Image
+                    src={displayImage || "/placeholder.svg"}
+                    alt={store.title}
+                    width={500}
+                    height={300}
+                    className="w-full h-64 object-cover rounded-t-lg"
+                  />
+                  {storeImages.length > 1 && (
+                    <Button
+                      onClick={() => setShowGallery(true)}
+                      className="absolute bottom-4 right-4 bg-black/70 hover:bg-black/80 text-white"
+                      size="sm"
+                    >
+                      <Images className="h-4 w-4 mr-2" />
+                      Show More Images ({storeImages.length})
+                    </Button>
+                  )}
+                </div>
                 <div className="p-6">
                   <h2 className="text-xl font-bold mb-2">
                     {t.booking.about} {store.title}
@@ -633,15 +692,29 @@ export function BookingPage({ store, services }: BookingPageProps) {
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="clientPhone">{t.booking.phoneOptional}</Label>
-                    <Input
-                      id="clientPhone"
-                      type="tel"
-                      value={clientPhone}
-                      onChange={(e) => setClientPhone(e.target.value)}
-                      placeholder={t.booking.yourPhone}
-                    />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="clientPhone">{t.booking.phoneOptional}</Label>
+                      <Input
+                        id="clientPhone"
+                        type="tel"
+                        value={clientPhone}
+                        onChange={(e) => setClientPhone(e.target.value)}
+                        placeholder={t.booking.yourPhone}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="age">Age</Label>
+                      <Input
+                        id="age"
+                        type="number"
+                        value={age}
+                        onChange={(e) => setAge(e.target.value)}
+                        placeholder={"insert your age"}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="notes">{t.booking.additionalNotes}</Label>
@@ -668,6 +741,9 @@ export function BookingPage({ store, services }: BookingPageProps) {
           </div>
         </div>
       </div>
+
+      {/* Image Gallery */}
+      <ImageGallery open={showGallery} onOpenChange={setShowGallery} images={storeImages} initialIndex={0} />
     </div>
   )
 }
