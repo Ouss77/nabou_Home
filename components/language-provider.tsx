@@ -1,83 +1,65 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
-import { type Language, getStoredLanguage, setStoredLanguage, getTranslation, type Translations } from "@/lib/i18n"
+import type React from "react"
+import { createContext, useContext, useState, useEffect } from "react"
+import {
+  getTranslation,
+  getStoredLanguage,
+  setStoredLanguage,
+  detectBrowserLanguage,
+  type Translation,
+} from "@/lib/i18n"
 
 interface LanguageContextType {
-  language: Language
-  setLanguage: (lang: Language) => void
-  t: Translations
-  isLoading: boolean
+  language: string
+  setLanguage: (lang: string) => void
+  t: Translation
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
 
-interface LanguageProviderProps {
-  children: ReactNode
-}
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const [language, setLanguageState] = useState<string>("en")
+  const [isClient, setIsClient] = useState(false)
 
-export function LanguageProvider({ children }: LanguageProviderProps) {
-  const [language, setLanguageState] = useState<Language>("en")
-  const [isLoading, setIsLoading] = useState(true)
-
-  // Initialize language on mount
   useEffect(() => {
-    const initializeLanguage = () => {
-      try {
-        const storedLang = getStoredLanguage()
-        console.log("Initializing language:", storedLang)
-        setLanguageState(storedLang)
-
-        // Set document language for accessibility
-        if (typeof document !== "undefined") {
-          document.documentElement.lang = storedLang
-        }
-      } catch (error) {
-        console.error("Failed to initialize language:", error)
-        setLanguageState("en")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    initializeLanguage()
+    setIsClient(true)
+    const stored = getStoredLanguage()
+    const detected = detectBrowserLanguage()
+    const initialLang = stored || detected
+    setLanguageState(initialLang)
   }, [])
 
-  const setLanguage = useCallback((lang: Language) => {
-    console.log("Changing language to:", lang)
+  const setLanguage = (lang: string) => {
     setLanguageState(lang)
     setStoredLanguage(lang)
-
-    // Set document language for accessibility
     if (typeof document !== "undefined") {
       document.documentElement.lang = lang
     }
-  }, [])
+  }
 
   const t = getTranslation(language)
 
-  // Show loading state to prevent hydration mismatch
-  if (isLoading) {
+  if (!isClient) {
+    // Return default English translations during SSR
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
+      <LanguageContext.Provider value={{ language: "en", setLanguage: () => {}, t: getTranslation("en") }}>
+        {children}
+      </LanguageContext.Provider>
     )
   }
 
-  return <LanguageContext.Provider value={{ language, setLanguage, t, isLoading }}>{children}</LanguageContext.Provider>
+  return <LanguageContext.Provider value={{ language, setLanguage, t }}>{children}</LanguageContext.Provider>
 }
 
 export function useLanguage() {
   const context = useContext(LanguageContext)
   if (context === undefined) {
-    // Provide fallback values instead of throwing error
-    console.warn("useLanguage used outside LanguageProvider, using fallback")
+    // Return safe defaults if used outside provider
     return {
-      language: "en" as Language,
+      language: "en",
       setLanguage: () => {},
       t: getTranslation("en"),
-      isLoading: false,
     }
   }
   return context

@@ -6,6 +6,59 @@ export const languages = [
   { code: "fr" as Language, name: "Français", flag: "🇫🇷" },
 ]
 
+export interface Translation {
+  nav: {
+    services: string
+    about: string
+    contact: string
+    login: string
+  }
+  hero: {
+    title: string
+    subtitle: string
+    startFree: string
+    learnMore: string
+  }
+  auth: {
+    signIn: string
+    signInToAccount: string
+    email: string
+    password: string
+    enterEmail: string
+    enterPassword: string
+    demoCredentials: string
+    admin: string
+    barber: string
+  }
+  registration: {
+    title: string
+    subtitle: string
+    fullName: string
+    email: string
+    password: string
+    confirmPassword: string
+    phone: string
+    city: string
+    register: string
+    success: string
+    successMessage: string
+    loginCredentials: string
+    copyCredentials: string
+    continueToLogin: string
+    passwordRequirements: string
+    passwordMinLength: string
+    passwordsMatch: string
+    passwordsDontMatch: string
+  }
+  common: {
+    cancel: string
+    save: string
+    delete: string
+    edit: string
+    loading: string
+  }
+}
+
 export interface Translations {
   // Navigation & Header
   nav: {
@@ -384,7 +437,7 @@ export interface Translations {
   }
 }
 
-export const translations: Record<Language, Translations> = {
+const translations: Record<Language, Translations> = {
   en: {
     nav: {
       home: "Home",
@@ -1112,71 +1165,183 @@ export const translations: Record<Language, Translations> = {
   },
 }
 
-// Language detection and management with better error handling
-export function detectBrowserLanguage(): Language {
-  if (typeof window === "undefined") return "en"
+const translations2: Record<string, Translation> = {
+  en: {
+    nav: {
+      services: "Services",
+      about: "About",
+      contact: "Contact",
+      login: "Login",
+    },
+    hero: {
+      title: "Modern Barber Management System",
+      subtitle: "Streamline your barbershop operations with our comprehensive booking and management platform",
+      startFree: "Start Free",
+      learnMore: "Learn More",
+    },
+    auth: {
+      signIn: "Sign In",
+      signInToAccount: "Sign in to your account",
+      email: "Email",
+      password: "Password",
+      enterEmail: "Enter your email",
+      enterPassword: "Enter your password",
+      demoCredentials: "Demo Credentials:",
+      admin: "Admin",
+      barber: "Barber",
+    },
+    registration: {
+      title: "Create Account",
+      subtitle: "Join our platform and start managing your barbershop",
+      fullName: "Full Name",
+      email: "Email",
+      password: "Password",
+      confirmPassword: "Confirm Password",
+      phone: "Phone",
+      city: "City",
+      register: "Register",
+      success: "Registration Successful!",
+      successMessage: "Your account has been created successfully",
+      loginCredentials: "Login Credentials",
+      copyCredentials: "Copy Credentials",
+      continueToLogin: "Continue to Login",
+      passwordRequirements: "Password Requirements:",
+      passwordMinLength: "At least 6 characters",
+      passwordsMatch: "Passwords match",
+      passwordsDontMatch: "Passwords must match",
+    },
+    common: {
+      cancel: "Cancel",
+      save: "Save",
+      delete: "Delete",
+      edit: "Edit",
+      loading: "Loading...",
+    },
+  },
+  fr: {
+    nav: {
+      services: "Services",
+      about: "À propos",
+      contact: "Contact",
+      login: "Connexion",
+    },
+    hero: {
+      title: "Système de Gestion de Salon Moderne",
+      subtitle:
+        "Rationalisez les opérations de votre salon de coiffure avec notre plateforme complète de réservation et de gestion",
+      startFree: "Commencer Gratuitement",
+      learnMore: "En Savoir Plus",
+    },
+    auth: {
+      signIn: "Se Connecter",
+      signInToAccount: "Connectez-vous à votre compte",
+      email: "Email",
+      password: "Mot de passe",
+      enterEmail: "Entrez votre email",
+      enterPassword: "Entrez votre mot de passe",
+      demoCredentials: "Identifiants de démonstration:",
+      admin: "Administrateur",
+      barber: "Coiffeur",
+    },
+    registration: {
+      title: "Créer un Compte",
+      subtitle: "Rejoignez notre plateforme et commencez à gérer votre salon",
+      fullName: "Nom Complet",
+      email: "Email",
+      password: "Mot de passe",
+      confirmPassword: "Confirmer le Mot de passe",
+      phone: "Téléphone",
+      city: "Ville",
+      register: "S'inscrire",
+      success: "Inscription Réussie!",
+      successMessage: "Votre compte a été créé avec succès",
+      loginCredentials: "Identifiants de Connexion",
+      copyCredentials: "Copier les Identifiants",
+      continueToLogin: "Continuer vers la Connexion",
+      passwordRequirements: "Exigences du Mot de passe:",
+      passwordMinLength: "Au moins 6 caractères",
+      passwordsMatch: "Les mots de passe correspondent",
+      passwordsDontMatch: "Les mots de passe doivent correspondre",
+    },
+    common: {
+      cancel: "Annuler",
+      save: "Sauvegarder",
+      delete: "Supprimer",
+      edit: "Modifier",
+      loading: "Chargement...",
+    },
+  },
+}
 
+export function getTranslation(language: string): Translation {
+  return translations2[language] || translations2.en
+}
+
+export function getStoredLanguage(): string {
+  if (typeof window === "undefined") return "en"
   try {
-    const browserLang = navigator.language?.toLowerCase() || "en"
-    if (browserLang.startsWith("fr")) return "fr"
-    return "en"
-  } catch (error) {
-    console.warn("Failed to detect browser language:", error)
+    return localStorage.getItem("barberbook-language") || "en"
+  } catch {
     return "en"
   }
 }
 
-export function getStoredLanguage(): Language {
-  if (typeof window === "undefined") return "en"
-
-  try {
-    const stored = localStorage.getItem("barberbook-language") as Language
-    if (stored && ["en", "fr"].includes(stored)) {
-      return stored
-    }
-    // If no valid stored language, detect from browser
-    const detected = detectBrowserLanguage()
-    setStoredLanguage(detected) // Store the detected language
-    return detected
-  } catch (error) {
-    console.warn("Failed to get stored language:", error)
-    return detectBrowserLanguage()
-  }
-}
-
-export function setStoredLanguage(language: Language): void {
+export function setStoredLanguage(language: string): void {
   if (typeof window === "undefined") return
-
   try {
     localStorage.setItem("barberbook-language", language)
-    // Also set document language attribute for accessibility
-    document.documentElement.lang = language
-  } catch (error) {
-    console.warn("Failed to store language:", error)
+  } catch {
+    // Ignore storage errors
   }
+}
+
+export function detectBrowserLanguage(): string {
+  if (typeof window === "undefined") return "en"
+  const browserLang = navigator.language.split("-")[0]
+  return ["en", "fr"].includes(browserLang) ? browserLang : "en"
+}
+
+export function getFallbackTranslation(): Translation {
+  return translations2.en
+}
+
+export function safeGetTranslation(language: string): Translation {
+  try {
+    return getTranslation(language)
+  } catch {
+    return getFallbackTranslation()
+  }
+}
+
+export function formatPrice(amount: number, language: string): string {
+  const locale = language === "fr" ? "fr-FR" : "en-US"
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "EUR",
+  }).format(amount)
 }
 
 // Main translation function - this was missing!
-export function getTranslation(language: Language): Translations {
-  return translations[language] || translations.en
-}
+// export function getTranslation(language: Language): Translations {
+//   return translations[language] || translations.en
+// }
 
 // Fallback function for when language context is not available
-export function getFallbackTranslation(): Translations {
-  return translations.en
-}
+// export function getFallbackTranslation(): Translations {
+//   return translations.en
+// }
 
 // Safe translation function that doesn't require context
-export function safeGetTranslation(language?: Language): Translations {
-  if (!language) return translations.en
-  return translations[language] || translations.en
-}
+// export function safeGetTranslation(language?: Language): Translations {
+//   if (!language) return translations.en
+//   return translations[language] || translations.en
+// }
 
 // Currency formatting function
-export function formatPrice(price: number, language: Language = "en"): string {
-  const t = translations[language]
-  return t.booking.priceFormat.replace("{price}", price.toFixed(2))
-}
+// export function formatPrice(price: number, language: Language = "en"): string {
+//   const t = translations[language]
+//   return t.booking.priceFormat.replace("{price}", price.toFixed(2))
+// }
 
 // Default export
-export default translations
+export default translations2

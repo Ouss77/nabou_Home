@@ -9,7 +9,6 @@ import { Scissors, Calendar, Users, Star, ArrowRight, Menu, X } from "lucide-rea
 import { LanguageSelector } from "@/components/language-selector"
 import { BarberRegistrationDialog } from "@/components/barber-registration-dialog"
 import { useLanguage } from "@/components/language-provider"
-import { motion, AnimatePresence } from "framer-motion"
 
 export default function HomePage() {
   const { t } = useLanguage()
@@ -39,19 +38,19 @@ export default function HomePage() {
                   href="#features"
                   className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200"
                 >
-                  {t.nav.services}
+                  Services
                 </Link>
                 <Link
                   href="#about"
                   className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200"
                 >
-                  {t.nav.about}
+                  About
                 </Link>
                 <Link
                   href="#contact"
                   className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200"
                 >
-                  {t.nav.contact}
+                  Contact
                 </Link>
               </div>
 
@@ -59,14 +58,14 @@ export default function HomePage() {
                 <LanguageSelector />
                 <Link href="/login">
                   <Button variant="outline" className="font-medium">
-                    {t.nav.login}
+                    Login
                   </Button>
                 </Link>
                 <Button
                   onClick={() => setShowRegistration(true)}
                   className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 font-medium shadow-lg hover:shadow-xl transition-all duration-200"
                 >
-                  {t.hero.startFree}
+                  Start Free
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
@@ -85,58 +84,50 @@ export default function HomePage() {
           </div>
 
           {/* Mobile Menu */}
-          <AnimatePresence>
-            {mobileMenuOpen && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="md:hidden border-t border-gray-200/50 bg-white/95 backdrop-blur-md"
-              >
-                <div className="px-4 py-4 space-y-4">
-                  <Link
-                    href="#features"
-                    className="block text-gray-600 hover:text-gray-900 font-medium py-2"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {t.nav.services}
-                  </Link>
-                  <Link
-                    href="#about"
-                    className="block text-gray-600 hover:text-gray-900 font-medium py-2"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {t.nav.about}
-                  </Link>
-                  <Link
-                    href="#contact"
-                    className="block text-gray-600 hover:text-gray-900 font-medium py-2"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {t.nav.contact}
-                  </Link>
-                  <div className="pt-4 border-t border-gray-200/50 space-y-3">
-                    <Link href="/login" className="block">
-                      <Button variant="outline" className="w-full font-medium">
-                        {t.nav.login}
-                      </Button>
-                    </Link>
-                    <Button
-                      onClick={() => {
-                        setShowRegistration(true)
-                        setMobileMenuOpen(false)
-                      }}
-                      className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 font-medium"
-                    >
-                      {t.hero.startFree}
-                      <ArrowRight className="ml-2 h-4 w-4" />
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-gray-200/50 bg-white/95 backdrop-blur-md">
+              <div className="px-4 py-4 space-y-4">
+                <Link
+                  href="#features"
+                  className="block text-gray-600 hover:text-gray-900 font-medium py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Services
+                </Link>
+                <Link
+                  href="#about"
+                  className="block text-gray-600 hover:text-gray-900 font-medium py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  About
+                </Link>
+                <Link
+                  href="#contact"
+                  className="block text-gray-600 hover:text-gray-900 font-medium py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Contact
+                </Link>
+                <div className="pt-4 border-t border-gray-200/50 space-y-3">
+                  <Link href="/login" className="block">
+                    <Button variant="outline" className="w-full font-medium">
+                      Login
                     </Button>
-                  </div>
+                  </Link>
+                  <Button
+                    onClick={() => {
+                      setShowRegistration(true)
+                      setMobileMenuOpen(false)
+                    }}
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 font-medium"
+                  >
+                    Start Free
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
@@ -149,7 +140,7 @@ export default function HomePage() {
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
           <div className="text-center">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+            <div>
               <Badge
                 variant="secondary"
                 className="mb-6 px-4 py-2 text-sm font-medium bg-blue-50 text-blue-700 border-blue-200"
@@ -157,23 +148,20 @@ export default function HomePage() {
                 Professional Booking Platform
               </Badge>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-                {t.hero.title}
+                Modern Barber Management System
               </h1>
-              <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">{t.hero.subtitle}</p>
-            </motion.div>
+              <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+                Streamline your barbershop operations with our comprehensive booking and management platform
+              </p>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-            >
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button
                 size="lg"
                 onClick={() => setShowRegistration(true)}
                 className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-8 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
               >
-                {t.hero.startFree}
+                Start Free
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button
@@ -181,32 +169,9 @@ export default function HomePage() {
                 variant="outline"
                 className="px-8 py-4 text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200"
               >
-                {t.hero.learnMore}
+                Learn More
               </Button>
-
-            {/* Demo Credentials - Commented out for now */}
-            {/*
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-12 p-6 bg-white/60 backdrop-blur-sm rounded-2xl border border-gray-200/50 shadow-lg max-w-2xl mx-auto"
-            >
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Try Demo Accounts</h3>
-              <div className="grid sm:grid-cols-2 gap-4 text-sm">
-                <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-200/50">
-                  <div className="font-medium text-blue-800 mb-2">Admin Account</div>
-                  <div className="text-gray-600">admin@barbershop.com</div>
-                  <div className="text-gray-600">admin123</div>
-                </div>
-                <div className="p-4 bg-green-50/50 rounded-xl border border-green-200/50">
-                  <div className="font-medium text-green-800 mb-2">Barber Account</div>
-                  <div className="text-gray-600">john@barbershop.com</div>
-                  <div className="text-gray-600">barber123</div>
-                </div>
-              </div>
-            </motion.div>
-            */}
+            </div>
           </div>
         </div>
       </section>
@@ -224,12 +189,7 @@ export default function HomePage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-            >
+            <div>
               <Card className="h-full hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-blue-50 to-blue-100/50">
                 <CardHeader>
                   <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center mb-4">
@@ -241,14 +201,9 @@ export default function HomePage() {
                   </CardDescription>
                 </CardHeader>
               </Card>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              viewport={{ once: true }}
-            >
+            <div>
               <Card className="h-full hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-green-50 to-green-100/50">
                 <CardHeader>
                   <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center mb-4">
@@ -260,14 +215,9 @@ export default function HomePage() {
                   </CardDescription>
                 </CardHeader>
               </Card>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              viewport={{ once: true }}
-            >
+            <div>
               <Card className="h-full hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-purple-50 to-purple-100/50">
                 <CardHeader>
                   <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center mb-4">
@@ -279,7 +229,7 @@ export default function HomePage() {
                   </CardDescription>
                 </CardHeader>
               </Card>
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>
@@ -287,5 +237,5 @@ export default function HomePage() {
       {/* Registration Dialog */}
       <BarberRegistrationDialog open={showRegistration} onOpenChange={setShowRegistration} />
     </div>
-  );
+  )
 }
