@@ -1,22 +1,19 @@
 import type { Language } from "@/lib/i18n"
 
 export function formatCurrency(amount: number, language: Language = "en"): string {
-  // Format for Euros
-  const formatter = new Intl.NumberFormat(language === "fr" ? "fr-FR" : "en-EU", {
+  const locale = language === "fr" ? "fr-FR" : "en-US"
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "EUR",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-
-  return formatter.format(amount)
+  }).format(amount)
 }
 
-export function formatPrice(price: number, language: Language = "en"): string {
-  return formatCurrency(price, language)
+export function parseCurrency(value: string): number {
+  // Remove currency symbols and parse as float
+  const cleaned = value.replace(/[€$,\s]/g, "")
+  return Number.parseFloat(cleaned) || 0
 }
 
-// Simple Euro symbol formatting for backward compatibility
-export function formatEuro(price: number): string {
-  return `€${price.toFixed(2)}`
+export function getCurrencySymbol(language: Language = "en"): string {
+  return "€"
 }

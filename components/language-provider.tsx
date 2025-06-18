@@ -7,19 +7,20 @@ import {
   getStoredLanguage,
   setStoredLanguage,
   detectBrowserLanguage,
-  type Translation,
+  type Language,
+  type Translations,
 } from "@/lib/i18n"
 
 interface LanguageContextType {
-  language: string
-  setLanguage: (lang: string) => void
-  t: Translation
+  language: Language
+  setLanguage: (lang: Language) => void
+  t: Translations
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<string>("en")
+  const [language, setLanguageState] = useState<Language>("en")
   const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     setLanguageState(initialLang)
   }, [])
 
-  const setLanguage = (lang: string) => {
+  const setLanguage = (lang: Language) => {
     setLanguageState(lang)
     setStoredLanguage(lang)
     if (typeof document !== "undefined") {
@@ -57,7 +58,7 @@ export function useLanguage() {
   if (context === undefined) {
     // Return safe defaults if used outside provider
     return {
-      language: "en",
+      language: "en" as Language,
       setLanguage: () => {},
       t: getTranslation("en"),
     }
