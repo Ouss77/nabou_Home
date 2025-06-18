@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useLanguage } from "@/components/language-provider"
 import { LanguageSelector } from "@/components/language-selector"
+import { formatCurrency } from "@/lib/currency-utils"
 
 interface User {
   id: string
@@ -48,7 +49,7 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ user, barbers, appointments }: AdminDashboardProps) {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [showCreateBarber, setShowCreateBarber] = useState(false)
   const router = useRouter()
 
@@ -211,7 +212,7 @@ export function AdminDashboard({ user, barbers, appointments }: AdminDashboardPr
                             {appointment.status === "confirmed" ? t.admin.confirmed : t.admin.pending}
                           </Badge>
                         </TableCell>
-                        <TableCell>${appointment.service_price}</TableCell>
+                        <TableCell>{formatCurrency(appointment.service_price, language)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

@@ -22,6 +22,17 @@ export function LanguageSelector() {
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
+  // Close dropdown on escape key
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener("keydown", handleEscape)
+    return () => document.removeEventListener("keydown", handleEscape)
+  }, [])
+
   const currentLang = languages.find((l) => l.code === language)
 
   const toggleDropdown = () => setIsOpen((open) => !open)
@@ -32,61 +43,71 @@ export function LanguageSelector() {
   }
 
   return (
-    <div className="relative z-999 inline-block text-left" ref={dropdownRef}>
+    <div className="relative inline-block text-left" ref={dropdownRef} style={{ zIndex: 9999 }}>
       <button
         onClick={toggleDropdown}
-        className="inline-flex items-center gap-2 px-2 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-200 shadow-sm hover:shadow-md"
+        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/95 backdrop-blur-sm dark:bg-gray-800/95 border border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-opacity-50 transition-all duration-200 shadow-lg hover:shadow-xl"
         aria-haspopup="true"
         aria-expanded={isOpen}
         aria-label="Select Language"
         type="button"
       >
         <div className="flex items-center gap-2">
-          <Globe className="h-5 text-blue-500" />
+          <Globe className="h-4 w-4 text-blue-500" />
           <span className="hidden sm:inline font-medium text-sm">
             {currentLang?.flag} {currentLang?.name}
           </span>
           <span className="sm:hidden text-lg">{currentLang?.flag}</span>
         </div>
         <ChevronDown
-          className={`ml-1 h-4 transition-transform duration-200 ${
-            isOpen ? "rotate-180" : "rotate-0"
-          }`}
+          className={`ml-1 h-4 w-4 transition-transform duration-200 ${isOpen ? "rotate-180" : "rotate-0"}`}
         />
       </button>
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="absolute right-0 mt-2 w-36 rounded-lg bg-white dark:bg-gray-800 shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none z-50 overflow-hidden border border-gray-200 dark:border-gray-700"
-            role="menu"
-            aria-orientation="vertical"
-            aria-labelledby="language-menu"
-          >
-            {languages.map(({ code, name, flag }) => (
-              <button
-                key={code}
-                onClick={() => handleSelect(code)}
-                className={`flex items-center gap-3 w-full px-4 py-3 text-sm text-left transition-colors duration-150 ${
-                  language === code
-                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-                }`}
-                role="menuitem"
-                type="button"
-              >
-                <span className="text-xl">{flag}</span>
-                <span className="flex-grow font-medium">{name}</span>
-                {language === code && (
-                  <Check className="w-4 h-4 text-blue-500 dark:text-blue-400" />
-                )}
-              </button>
-            ))}
-          </motion.div>
+          <>
+            {/* Backdrop overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/10 backdrop-blur-sm"
+              style={{ zIndex: 9998 }}
+              onClick={() => setIsOpen(false)}
+            />
+
+            {/* Dropdown menu */}
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="absolute right-0 mt-2 w-40 rounded-xl bg-white/95 backdrop-blur-md dark:bg-gray-800/95 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 focus:outline-none overflow-hidden border border-gray-200/50 dark:border-gray-700/50"
+              style={{ zIndex: 9999 }}
+              role="menu"
+              aria-orientation="vertical"
+              aria-labelledby="language-menu"
+            >
+              {languages.map(({ code, name, flag }) => (
+                <button
+                  key={code}
+                  onClick={() => handleSelect(code)}
+                  className={`flex items-center gap-3 w-full px-4 py-3 text-sm text-left transition-all duration-150 ${
+                    language === code
+                      ? "bg-blue-50/80 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium"
+                      : "hover:bg-gray-50/80 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300"
+                  }`}
+                  role="menuitem"
+                  type="button"
+                >
+                  <span className="text-lg">{flag}</span>
+                  <span className="flex-grow">{name}</span>
+                  {language === code && <Check className="w-4 h-4 text-blue-500 dark:text-blue-400" />}
+                </button>
+              ))}
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

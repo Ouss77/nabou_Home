@@ -35,7 +35,7 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <LanguageProvider>
-          {children}
+          <div id="root">{children}</div>
           <ToastProvider>
             <ToastViewport />
           </ToastProvider>

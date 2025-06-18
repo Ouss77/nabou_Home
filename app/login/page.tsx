@@ -1,4 +1,4 @@
-import { LoginForm } from "@/components/login-form"
+import { SimpleLoginForm } from "@/components/simple-login-form"
 import { Scissors } from "lucide-react"
 import Link from "next/link"
 
@@ -15,7 +15,7 @@ export default function LoginPage() {
             BarberBook
           </Link>
         </div>
-        <LoginForm />
+        <SimpleLoginForm />
       </div>
     </div>
   )

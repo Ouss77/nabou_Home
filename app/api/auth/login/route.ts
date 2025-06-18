@@ -16,11 +16,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
-    // For demo purposes, we'll accept the demo passwords
-    const validPassword =
-      (email === "admin@barbershop.com" && password === "admin123") ||
-      (email === "john@barbershop.com" && password === "barber123") ||
-      user.password_hash === `hashed_${password}`
+    // Check password - handle demo accounts and registered users
+    let validPassword = false
+
+    // Check demo accounts first
+    if (email === "admin@barbershop.com" && password === "admin123") {
+      validPassword = true
+    } else if (email === "john@barbershop.com" && password === "barber123") {
+      validPassword = true
+    } else {
+      // For registered users, compare with stored password
+      // Temporarily using plain text comparison
+      validPassword = user.password_hash === password
+    }
 
     if (!validPassword) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })

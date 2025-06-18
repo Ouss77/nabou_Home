@@ -16,6 +16,10 @@ export interface Translations {
     barber: string
     getStarted: string
     learnMore: string
+    services: string
+    about: string
+    contact: string
+    register: string
   }
 
   // Home Page
@@ -62,12 +66,25 @@ export interface Translations {
     }
   }
 
+  // Hero Section
+  hero: {
+    title: string
+    subtitle: string
+    cta: string
+    startFree: string
+    learnMore: string
+  }
+
   // Login & Auth
   auth: {
     signIn: string
     signInToAccount: string
     email: string
     password: string
+    confirmPassword: string
+    fullName: string
+    phone: string
+    city: string
     enterEmail: string
     enterPassword: string
     demoCredentials: string
@@ -77,6 +94,18 @@ export interface Translations {
     noPermission: string
     contactAdmin: string
     goHome: string
+    loginButton: string
+    registerButton: string
+    forgotPassword: string
+    noAccount: string
+    hasAccount: string
+    signUp: string
+    invalidCredentials: string
+    registrationSuccess: string
+    loginSuccess: string
+    logoutSuccess: string
+    login: string
+    register: string
   }
 
   // Booking Page
@@ -124,6 +153,14 @@ export interface Translations {
     yourFullName: string
     yourEmail: string
     yourPhone: string
+    total: string
+    currency: string
+    priceFormat: string
+    clientInfo: string
+    name: string
+    notes: string
+    confirmBooking: string
+    bookingSuccess: string
   }
 
   // Admin Dashboard
@@ -144,6 +181,10 @@ export interface Translations {
     status: string
     confirmed: string
     pending: string
+    completed: string
+    cancelled: string
+    dashboard: string
+    users: string
   }
 
   // Barber Dashboard
@@ -188,6 +229,11 @@ export interface Translations {
     create: string
     exampleName: string
     exampleAddress: string
+    title: string
+    services: string
+    workingHours: string
+    contact: string
+    images: string
   }
 
   // Service Management
@@ -219,6 +265,11 @@ export interface Translations {
     currentBlockedTimes: string
     noBlockedTimes: string
     deleteConfirm: string
+    blockTimeSlots: string
+    selectDate: string
+    blockSlot: string
+    blockedTimes: string
+    removeBlock: string
   }
 
   // Create Barber
@@ -251,6 +302,57 @@ export interface Translations {
     outsideHours: string
   }
 
+  // Store Setup
+  storeSetup: {
+    setupStore: string
+    editStore: string
+    storeDetails: string
+    storeName: string
+    storeAddress: string
+    storeDescription: string
+    workingHours: string
+    dayOfWeek: string
+    startTime: string
+    endTime: string
+    closed: string
+    saveStore: string
+    updateStore: string
+    monday: string
+    tuesday: string
+    wednesday: string
+    thursday: string
+    friday: string
+    saturday: string
+    sunday: string
+  }
+
+  // Registration
+  registration: {
+    title: string
+    subtitle: string
+    fullName: string
+    email: string
+    password: string
+    confirmPassword: string
+    phone: string
+    city: string
+    register: string
+    success: string
+    successMessage: string
+    loginCredentials: string
+    continueToLogin: string
+    copyCredentials: string
+    credentialsCopied: string
+    passwordRequirements: string
+    passwordMinLength: string
+    passwordsMatch: string
+    passwordsDontMatch: string
+    validEmail: string
+    invalidEmail: string
+    validPhone: string
+    invalidPhone: string
+  }
+
   // Common
   common: {
     loading: string
@@ -272,6 +374,13 @@ export interface Translations {
     max: string
     characters: string
     linkCopied: string
+    copyToClipboard: string
+    back: string
+    open: string
+    yes: string
+    no: string
+    warning: string
+    info: string
   }
 }
 
@@ -281,14 +390,17 @@ export const translations: Record<Language, Translations> = {
       home: "Home",
       login: "Login",
       logout: "Logout",
-      subscribe: "Start for Free",
       admin: "Admin",
       barber: "Barber",
       getStarted: "Get Started",
       learnMore: "Learn More",
+      services: "Services",
+      about: "About",
+      contact: "Contact",
+      register: "Register",
     },
     home: {
-      title: "Nabou",
+      title: "BarberBook",
       subtitle: "Professional Barber Management",
       description: "Complete appointment management system for modern barbershops",
       heroTitle: "Streamline Your Barbershop",
@@ -330,11 +442,22 @@ export const translations: Record<Language, Translations> = {
         },
       },
     },
+    hero: {
+      title: "Professional Barber Booking System",
+      subtitle: "Streamline your barbershop operations with our comprehensive booking platform",
+      cta: "Get Started",
+      startFree: "Start for Free",
+      learnMore: "Learn More",
+    },
     auth: {
       signIn: "Sign In",
       signInToAccount: "Sign in to your account",
       email: "Email",
       password: "Password",
+      confirmPassword: "Confirm Password",
+      fullName: "Full Name",
+      phone: "Phone Number",
+      city: "City",
       enterEmail: "Enter your email",
       enterPassword: "Enter your password",
       demoCredentials: "Demo Credentials:",
@@ -344,6 +467,18 @@ export const translations: Record<Language, Translations> = {
       noPermission: "You don't have permission to access this page.",
       contactAdmin: "Please contact your administrator if you believe this is an error.",
       goHome: "Go Home",
+      loginButton: "Sign In",
+      registerButton: "Create Account",
+      forgotPassword: "Forgot Password?",
+      noAccount: "Don't have an account?",
+      hasAccount: "Already have an account?",
+      signUp: "Sign up",
+      invalidCredentials: "Invalid email or password",
+      registrationSuccess: "Registration successful",
+      loginSuccess: "Login successful",
+      logoutSuccess: "Logout successful",
+      login: "Login",
+      register: "Register",
     },
     booking: {
       bookAppointment: "Book Your Appointment",
@@ -390,6 +525,14 @@ export const translations: Record<Language, Translations> = {
       yourFullName: "Your full name",
       yourEmail: "your@email.com",
       yourPhone: "Your phone number",
+      total: "Total",
+      currency: "€",
+      priceFormat: "€{price}",
+      clientInfo: "Client Information",
+      name: "Name",
+      notes: "Notes (Optional)",
+      confirmBooking: "Confirm Booking",
+      bookingSuccess: "Booking confirmed successfully",
     },
     admin: {
       welcome: "Welcome",
@@ -408,6 +551,10 @@ export const translations: Record<Language, Translations> = {
       status: "Status",
       confirmed: "confirmed",
       pending: "pending",
+      completed: "Completed",
+      cancelled: "Cancelled",
+      dashboard: "Admin Dashboard",
+      users: "Users",
     },
     barberDashboard: {
       welcome: "Welcome",
@@ -448,6 +595,11 @@ export const translations: Record<Language, Translations> = {
       create: "Create Store",
       exampleName: "e.g., Classic Cuts Barbershop",
       exampleAddress: "e.g., 123 Main Street, Downtown",
+      title: "Store Name",
+      services: "Services",
+      workingHours: "Working Hours",
+      contact: "Contact",
+      images: "Images",
     },
     serviceManagement: {
       manageServices: "Manage Services",
@@ -475,6 +627,11 @@ export const translations: Record<Language, Translations> = {
       currentBlockedTimes: "Current Blocked Times",
       noBlockedTimes: "No blocked times set.",
       deleteConfirm: "Are you sure you want to remove this blocked time?",
+      blockTimeSlots: "Block time slots when you're not available",
+      selectDate: "Select Date",
+      blockSlot: "Block Time Slot",
+      blockedTimes: "Blocked Times",
+      removeBlock: "Remove Block",
     },
     createBarber: {
       addNewBarber: "Add New Barber",
@@ -513,6 +670,54 @@ export const translations: Record<Language, Translations> = {
       to: "to",
       outsideHours: "This time slot is outside of working hours. Please select a time during business hours.",
     },
+    storeSetup: {
+      setupStore: "Set Up Store",
+      editStore: "Edit Store",
+      storeDetails: "Store Details",
+      storeName: "Store Name",
+      storeAddress: "Store Address",
+      storeDescription: "Store Description",
+      workingHours: "Working Hours",
+      dayOfWeek: "Day",
+      startTime: "Start Time",
+      endTime: "End Time",
+      closed: "Closed",
+      saveStore: "Save Store",
+      updateStore: "Update Store",
+      monday: "Monday",
+      tuesday: "Tuesday",
+      wednesday: "Wednesday",
+      thursday: "Thursday",
+      friday: "Friday",
+      saturday: "Saturday",
+      sunday: "Sunday",
+    },
+    registration: {
+      title: "Start Your Barber Business",
+      subtitle: "Create your account and start accepting bookings today",
+      fullName: "Full Name",
+      email: "Email Address",
+      password: "Password",
+      confirmPassword: "Confirm Password",
+      phone: "Phone Number",
+      city: "City",
+      register: "Create Account",
+      success: "Registration Successful!",
+      successMessage:
+        "Your barber account has been created successfully. You can now log in and start setting up your store.",
+      loginCredentials: "Your Login Credentials",
+      continueToLogin: "Continue to Login",
+      copyCredentials: "Copy Credentials",
+      credentialsCopied: "Credentials copied to clipboard",
+      passwordRequirements: "Password Requirements:",
+      passwordMinLength: "At least 6 characters",
+      passwordsMatch: "Passwords match",
+      passwordsDontMatch: "Passwords don't match",
+      validEmail: "Valid email format",
+      invalidEmail: "Invalid email format",
+      validPhone: "Valid phone number",
+      invalidPhone: "Invalid phone number",
+    },
     common: {
       loading: "Loading...",
       error: "Error",
@@ -532,7 +737,14 @@ export const translations: Record<Language, Translations> = {
       min: "min",
       max: "max",
       characters: "characters",
-      linkCopied: "Link copied!",
+      linkCopied: "Link copied to clipboard",
+      copyToClipboard: "Copy to clipboard",
+      back: "Back",
+      open: "Open",
+      yes: "Yes",
+      no: "No",
+      warning: "Warning",
+      info: "Info",
     },
   },
   fr: {
@@ -540,14 +752,17 @@ export const translations: Record<Language, Translations> = {
       home: "Accueil",
       login: "Connexion",
       logout: "Déconnexion",
-      subscribe: "Commencer Gratuitement",
       admin: "Admin",
       barber: "Barbier",
       getStarted: "Commencer",
       learnMore: "En savoir plus",
+      services: "Services",
+      about: "À propos",
+      contact: "Contact",
+      register: "S'inscrire",
     },
     home: {
-      title: "Nabou",
+      title: "BarberBook",
       subtitle: "Gestion Professionnelle de Salon de Coiffure",
       description: "Système complet de gestion de rendez-vous pour salons de coiffure modernes",
       heroTitle: "Optimisez Votre Salon de Coiffure",
@@ -589,11 +804,22 @@ export const translations: Record<Language, Translations> = {
         },
       },
     },
+    hero: {
+      title: "Système de Réservation Professionnel pour Barbiers",
+      subtitle: "Optimisez les opérations de votre salon de coiffure avec notre plateforme de réservation complète",
+      cta: "Commencer",
+      startFree: "Commencer Gratuitement",
+      learnMore: "En Savoir Plus",
+    },
     auth: {
       signIn: "Se Connecter",
       signInToAccount: "Connectez-vous à votre compte",
       email: "Email",
       password: "Mot de passe",
+      confirmPassword: "Confirmer le mot de passe",
+      fullName: "Nom complet",
+      phone: "Numéro de téléphone",
+      city: "Ville",
       enterEmail: "Entrez votre email",
       enterPassword: "Entrez votre mot de passe",
       demoCredentials: "Identifiants de démonstration :",
@@ -603,6 +829,18 @@ export const translations: Record<Language, Translations> = {
       noPermission: "Vous n'avez pas la permission d'accéder à cette page.",
       contactAdmin: "Veuillez contacter votre administrateur si vous pensez qu'il s'agit d'une erreur.",
       goHome: "Retour à l'Accueil",
+      loginButton: "Se connecter",
+      registerButton: "Créer un compte",
+      forgotPassword: "Mot de passe oublié ?",
+      noAccount: "Vous n'avez pas de compte ?",
+      hasAccount: "Vous avez déjà un compte ?",
+      signUp: "S'inscrire",
+      invalidCredentials: "Email ou mot de passe invalide",
+      registrationSuccess: "Inscription réussie",
+      loginSuccess: "Connexion réussie",
+      logoutSuccess: "Déconnexion réussie",
+      login: "Connexion",
+      register: "S'inscrire",
     },
     booking: {
       bookAppointment: "Réservez Votre Rendez-vous",
@@ -649,16 +887,24 @@ export const translations: Record<Language, Translations> = {
       yourFullName: "Votre nom complet",
       yourEmail: "votre@email.com",
       yourPhone: "Votre numéro de téléphone",
+      total: "Total",
+      currency: "€",
+      priceFormat: "{price}€",
+      clientInfo: "Informations Client",
+      name: "Nom",
+      notes: "Notes (Optionnel)",
+      confirmBooking: "Confirmer la Réservation",
+      bookingSuccess: "Réservation confirmée avec succès",
     },
     admin: {
       welcome: "Bienvenue",
-      totalBarbers: "Total Barbiers",
-      totalAppointments: "Total Rendez-vous",
+      totalBarbers: "Total des Barbiers",
+      totalAppointments: "Total des Rendez-vous",
       todayAppointments: "Rendez-vous d'Aujourd'hui",
       barbers: "Barbiers",
       allAppointments: "Tous les Rendez-vous",
-      manageBarbers: "Gérer les comptes barbiers et voir leurs statistiques",
-      viewStatistics: "Voir tous les rendez-vous de tous les barbiers",
+      manageBarbers: "Gérez vos barbiers et consultez leurs performances",
+      viewStatistics: "Voir les statistiques de rendez-vous et gérer les réservations",
       addBarber: "Ajouter un Barbier",
       name: "Nom",
       appointments: "Rendez-vous",
@@ -667,6 +913,10 @@ export const translations: Record<Language, Translations> = {
       status: "Statut",
       confirmed: "confirmé",
       pending: "en attente",
+      completed: "Terminé",
+      cancelled: "Annulé",
+      dashboard: "Tableau de Bord Admin",
+      users: "Utilisateurs",
     },
     barberDashboard: {
       welcome: "Bienvenue",
@@ -707,6 +957,11 @@ export const translations: Record<Language, Translations> = {
       create: "Créer le Salon",
       exampleName: "ex., Salon de Coiffure Classique",
       exampleAddress: "ex., 123 Rue Principale, Centre-ville",
+      title: "Nom du Magasin",
+      services: "Services",
+      workingHours: "Heures d'Ouverture",
+      contact: "Contact",
+      images: "Images",
     },
     serviceManagement: {
       manageServices: "Gérer les Services",
@@ -734,6 +989,11 @@ export const translations: Record<Language, Translations> = {
       currentBlockedTimes: "Temps Actuellement Bloqués",
       noBlockedTimes: "Aucun temps bloqué défini.",
       deleteConfirm: "Êtes-vous sûr de vouloir supprimer ce temps bloqué ?",
+      blockTimeSlots: "Bloquer des créneaux horaires quand vous n'êtes pas disponible",
+      selectDate: "Sélectionner une Date",
+      blockSlot: "Bloquer le Créneau",
+      blockedTimes: "Temps Bloqués",
+      removeBlock: "Supprimer le Blocage",
     },
     createBarber: {
       addNewBarber: "Ajouter un Nouveau Barbier",
@@ -773,6 +1033,54 @@ export const translations: Record<Language, Translations> = {
       outsideHours:
         "Ce créneau horaire est en dehors des heures d'ouverture. Veuillez sélectionner une heure pendant les heures d'ouverture.",
     },
+    storeSetup: {
+      setupStore: "Configurer le Magasin",
+      editStore: "Modifier le Magasin",
+      storeDetails: "Détails du Magasin",
+      storeName: "Nom du Magasin",
+      storeAddress: "Adresse du Magasin",
+      storeDescription: "Description du Magasin",
+      workingHours: "Heures d'Ouverture",
+      dayOfWeek: "Jour",
+      startTime: "Heure de Début",
+      endTime: "Heure de Fin",
+      closed: "Fermé",
+      saveStore: "Enregistrer le Magasin",
+      updateStore: "Mettre à Jour le Magasin",
+      monday: "Lundi",
+      tuesday: "Mardi",
+      wednesday: "Mercredi",
+      thursday: "Jeudi",
+      friday: "Vendredi",
+      saturday: "Samedi",
+      sunday: "Dimanche",
+    },
+    registration: {
+      title: "Démarrez Votre Entreprise de Barbier",
+      subtitle: "Créez votre compte et commencez à accepter des réservations dès aujourd'hui",
+      fullName: "Nom Complet",
+      email: "Adresse Email",
+      password: "Mot de Passe",
+      confirmPassword: "Confirmer le Mot de Passe",
+      phone: "Numéro de Téléphone",
+      city: "Ville",
+      register: "Créer un Compte",
+      success: "Inscription Réussie !",
+      successMessage:
+        "Votre compte barbier a été créé avec succès. Vous pouvez maintenant vous connecter et commencer à configurer votre magasin.",
+      loginCredentials: "Vos Identifiants de Connexion",
+      continueToLogin: "Continuer vers la Connexion",
+      copyCredentials: "Copier les Identifiants",
+      credentialsCopied: "Identifiants copiés dans le presse-papiers",
+      passwordRequirements: "Exigences du Mot de Passe :",
+      passwordMinLength: "Au moins 6 caractères",
+      passwordsMatch: "Les mots de passe correspondent",
+      passwordsDontMatch: "Les mots de passe ne correspondent pas",
+      validEmail: "Format d'email valide",
+      invalidEmail: "Format d'email invalide",
+      validPhone: "Numéro de téléphone valide",
+      invalidPhone: "Numéro de téléphone invalide",
+    },
     common: {
       loading: "Chargement...",
       error: "Erreur",
@@ -792,7 +1100,14 @@ export const translations: Record<Language, Translations> = {
       min: "min",
       max: "max",
       characters: "caractères",
-      linkCopied: "Lien copié !",
+      linkCopied: "Lien copié dans le presse-papiers",
+      copyToClipboard: "Copier dans le presse-papiers",
+      back: "Retour",
+      open: "Ouvrir",
+      yes: "Oui",
+      no: "Non",
+      warning: "Avertissement",
+      info: "Info",
     },
   },
 }
@@ -841,6 +1156,27 @@ export function setStoredLanguage(language: Language): void {
   }
 }
 
+// Main translation function - this was missing!
 export function getTranslation(language: Language): Translations {
   return translations[language] || translations.en
 }
+
+// Fallback function for when language context is not available
+export function getFallbackTranslation(): Translations {
+  return translations.en
+}
+
+// Safe translation function that doesn't require context
+export function safeGetTranslation(language?: Language): Translations {
+  if (!language) return translations.en
+  return translations[language] || translations.en
+}
+
+// Currency formatting function
+export function formatPrice(price: number, language: Language = "en"): string {
+  const t = translations[language]
+  return t.booking.priceFormat.replace("{price}", price.toFixed(2))
+}
+
+// Default export
+export default translations

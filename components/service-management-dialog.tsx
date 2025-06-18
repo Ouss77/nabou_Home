@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Plus, Trash2, Edit } from "lucide-react"
 import { useLanguage } from "@/components/language-provider"
+import { formatCurrency } from "@/lib/currency-utils"
 
 interface Service {
   id: string
@@ -36,7 +37,7 @@ export function ServiceManagementDialog({
   services,
   onSuccess,
 }: ServiceManagementDialogProps) {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [editingService, setEditingService] = useState<Service | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [name, setName] = useState("")
@@ -160,7 +161,7 @@ export function ServiceManagementDialog({
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="price">{t.booking.price} ($)</Label>
+                      <Label htmlFor="price">{t.booking.price} (€)</Label>
                       <Input
                         id="price"
                         type="number"
@@ -233,7 +234,7 @@ export function ServiceManagementDialog({
                           <h4 className="font-medium">{service.name}</h4>
                           <p className="text-sm text-muted-foreground">{service.description}</p>
                           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                            <span>${service.price}</span>
+                            <span>{formatCurrency(service.price, language)}</span>
                             <span>
                               {service.duration_minutes} {t.booking.minutes}
                             </span>

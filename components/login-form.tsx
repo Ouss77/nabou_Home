@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,6 +20,32 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
+
+  useEffect(() => {
+    // Check for auto-login credentials from registration
+    const autoLoginData = sessionStorage.getItem("autoLogin")
+    if (autoLoginData) {
+      try {
+        const credentials = JSON.parse(autoLoginData)
+        setEmail(credentials.email)
+        setPassword(credentials.password)
+
+        // Clear the stored credentials
+        sessionStorage.removeItem("autoLogin")
+
+        // Auto-submit the form after a brief delay
+        setTimeout(() => {
+          const form = document.querySelector("form")
+          if (form) {
+            form.requestSubmit()
+          }
+        }, 500)
+      } catch (error) {
+        console.error("Error parsing auto-login data:", error)
+        sessionStorage.removeItem("autoLogin")
+      }
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

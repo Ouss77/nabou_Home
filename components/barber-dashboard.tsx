@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useLanguage } from "@/components/language-provider"
 import { useToast } from "@/hooks/use-toast"
+import { formatCurrency } from "@/lib/currency-utils"
 
 interface User {
   id: string
@@ -94,7 +95,7 @@ interface BarberDashboardProps {
 }
 
 export function BarberDashboard({ user, store, services, appointments, workingHours }: BarberDashboardProps) {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const { toast } = useToast()
   const [showStoreSetup, setShowStoreSetup] = useState(false)
   const [showServiceManagement, setShowServiceManagement] = useState(false)
@@ -293,7 +294,7 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
                   <Store className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
+                  <div className="text-2xl font-bold">{formatCurrency(totalRevenue, language)}</div>
                 </CardContent>
               </Card>
             </div>
@@ -342,7 +343,7 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
                                   {appointment.status === "confirmed" ? t.admin.confirmed : t.admin.pending}
                                 </Badge>
                               </TableCell>
-                              <TableCell>${appointment.service_price}</TableCell>
+                              <TableCell>{formatCurrency(appointment.service_price, language)}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -425,7 +426,7 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
                                 {service.duration_minutes} {t.booking.minutes}
                               </p>
                             </div>
-                            <div className="text-lg font-bold">${service.price}</div>
+                            <div className="text-lg font-bold">{formatCurrency(service.price, language)}</div>
                           </div>
                         ))}
                       </div>

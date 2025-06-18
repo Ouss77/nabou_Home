@@ -10,6 +10,10 @@ export interface User {
   name: string
   role: "admin" | "barber"
   created_at: string
+  phone?: string
+  city?: string
+  profile_completed?: boolean
+  email_verified?: boolean
 }
 
 export interface Store {
@@ -109,11 +113,18 @@ export class OutsideWorkingHoursError extends Error {
 }
 
 // User functions
-export async function createUser(email: string, passwordHash: string, name: string, role: "admin" | "barber") {
+export async function createUser(
+  email: string,
+  passwordHash: string, // This will temporarily be plain text
+  name: string,
+  role: "admin" | "barber",
+  phone?: string,
+  city?: string,
+) {
   const result = await sql`
-    INSERT INTO users (email, password_hash, name, role)
-    VALUES (${email}, ${passwordHash}, ${name}, ${role})
-    RETURNING id, email, name, role, created_at
+    INSERT INTO users (email, password_hash, name, role, phone, city, profile_completed, email_verified)
+    VALUES (${email}, ${passwordHash}, ${name}, ${role}, ${phone || null}, ${city || null}, ${phone ? true : false}, true)
+    RETURNING id, email, name, role, phone, city, profile_completed, email_verified, created_at
   `
   return result[0]
 }
