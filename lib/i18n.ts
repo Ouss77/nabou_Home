@@ -61,6 +61,12 @@ export interface Translations {
     cancelled: string
     dashboard: string
   }
+  calendar: {
+    months: string[]
+    days: string[]
+    selectDate: string
+    noAppointments: string
+  }
   createBarber: {
     addNewBarber: string
     createAccount: string
@@ -227,6 +233,25 @@ const translations: Record<Language, Translations> = {
       cancelled: "Cancelled",
       dashboard: "Admin Dashboard",
     },
+    calendar: {
+      months: [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ],
+      days: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+      selectDate: "Select a date to view appointments",
+      noAppointments: "No appointments for this date",
+    },
     createBarber: {
       addNewBarber: "Add New Barber",
       createAccount: "Create a new barber account for your team",
@@ -391,6 +416,25 @@ const translations: Record<Language, Translations> = {
       completed: "Terminé",
       cancelled: "Annulé",
       dashboard: "Tableau de Bord Admin",
+    },
+    calendar: {
+      months: [
+        "Janvier",
+        "Février",
+        "Mars",
+        "Avril",
+        "Mai",
+        "Juin",
+        "Juillet",
+        "Août",
+        "Septembre",
+        "Octobre",
+        "Novembre",
+        "Décembre",
+      ],
+      days: ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
+      selectDate: "Sélectionnez une date pour voir les rendez-vous",
+      noAppointments: "Aucun rendez-vous pour cette date",
     },
     createBarber: {
       addNewBarber: "Ajouter un Nouveau Barbier",
