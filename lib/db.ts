@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless"
+import slugify from "slugify";
 
 // Create Neon SQL client
 const sql = neon(process.env.DATABASE_URL!)
@@ -171,6 +172,22 @@ export async function getStoreById(storeId: string) {
   `
   return result[0] || null
 }
+export async function getStoreBySlug(slug: string) {
+  const result = await sql`
+    SELECT * FROM stores WHERE slug = ${slug}
+  `
+  return result[0] || null
+}
+
+
+export async function getStoreByName(storeName: string) {
+  console.log("getStoreByName called with:", storeName)
+  const result = await sql`
+    SELECT * FROM stores WHERE title = ${storeName}
+  `
+  console.log("getStoreByName result:", result  )
+  return result[0] || null 
+}
 
 export async function createStore(
   barberId: string,
@@ -179,12 +196,19 @@ export async function createStore(
   description: string,
   imageUrl?: string,
 ) {
+  const slug = slugify(title, {
+    lower: true,
+    strict: true, // removes special chars
+    trim: true,
+  });
+
   const result = await sql`
-    INSERT INTO stores (barber_id, title, address, description, image_url)
-    VALUES (${barberId}, ${title}, ${address}, ${description}, ${imageUrl || null})
+    INSERT INTO stores (barber_id, title, slug, address, description, image_url)
+    VALUES (${barberId}, ${title}, ${slug}, ${address}, ${description}, ${imageUrl || null})
     RETURNING *
-  `
-  return result[0]
+  `;
+
+  return result[0];
 }
 
 export async function updateStore(

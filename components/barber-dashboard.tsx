@@ -26,6 +26,8 @@ interface User {
 }
 
 interface StoreProps {
+  slug: any
+  name: any
   id: string
   title: string
   address: string
@@ -155,8 +157,9 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
 
   const handleCopyLink = async () => {
     if (store?.id) {
-      const publicPageUrl = `${window.location.origin}/book/${store.id}`
-      try {
+       const publicPageUrl = `${window.location.origin}/book/${store.slug}`;
+
+        try {
         await navigator.clipboard.writeText(publicPageUrl)
         toast({
           title: t.common.linkCopied,
@@ -208,7 +211,7 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
             {store && (
               <>
                 <Button variant="outline" size="sm" asChild className="whitespace-nowrap shrink-0">
-                  <Link href={`/book/${store.id}`} target="_blank">
+                  <Link href={`/book/${store.slug}`} target="_blank">
                     <ExternalLink className="h-4 w-4 mr-2" />
                     <span className="hidden sm:inline">{t.barberDashboard.viewPublicPage}</span>
                     <span className="sm:hidden">Public Page</span>
@@ -508,3 +511,4 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
     </div>
   )
 }
+
