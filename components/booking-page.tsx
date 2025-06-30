@@ -743,8 +743,10 @@ export function BookingPage({ store, services }: BookingPageProps) {
                             >
                               <div className="flex flex-col items-center gap-1">
                                 <span>{time}</span>
-                                {isBooked && <XCircle className="h-3 w-3" />}
-                                {isPassed && <Timer className="h-3 w-3" />}
+                                <div className="flex">
+                                                                {isBooked && <XCircle className="h-3 w-3" />}
+                                {isPassed && <Timer className="h-3 w-3" />} </div>
+
                                 {!isDisabled && !isSelected && (
                                   <CheckCircle2 className="h-3 w-3 opacity-0 group-hover:opacity-100" />
                                 )}

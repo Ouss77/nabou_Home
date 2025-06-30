@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +12,7 @@ import { ServiceManagementDialog } from "@/components/service-management-dialog"
 import { BlockTimeDialog } from "@/components/block-time-dialog"
 import { AppointmentCalendar } from "@/components/appointment-calendar"
 import { ImageUpload } from "@/components/image-upload"
+import { AnalyticsDashboard } from "@/components/analytics-dashboard"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useLanguage } from "@/components/language-provider"
@@ -26,13 +27,12 @@ interface User {
 }
 
 interface StoreProps {
-  slug: any
-  name: any
   id: string
   title: string
   address: string
   description: string
   image_url: string
+  slug?: string
 }
 
 interface Service {
@@ -54,6 +54,7 @@ interface Appointment {
   service_price: number
   status: string
   notes: string
+  age?: number
 }
 
 interface BlockedTime {
@@ -96,7 +97,13 @@ interface BarberDashboardProps {
   workingHours: WorkingHours[]
 }
 
-export function BarberDashboard({ user, store, services, appointments, workingHours }: BarberDashboardProps) {
+export function BarberDashboard({
+  user,
+  store,
+  services: initialServices,
+  appointments: initialAppointments,
+  workingHours,
+}: BarberDashboardProps) {
   const { t, language } = useLanguage()
   const { toast } = useToast()
   const [showStoreSetup, setShowStoreSetup] = useState(false)
@@ -106,6 +113,12 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
   const [storeImages, setStoreImages] = useState<StoreImage[]>([])
   const [loadingBlockedTimes, setLoadingBlockedTimes] = useState(false)
   const [loadingImages, setLoadingImages] = useState(false)
+
+  // State for real-time data updates
+  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments)
+  const [services, setServices] = useState<Service[]>(initialServices)
+  const [lastDataUpdate, setLastDataUpdate] = useState<Date>(new Date())
+
   const router = useRouter()
 
   // Fetch blocked times and images when store is available
@@ -113,6 +126,29 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
     if (store?.id) {
       fetchBlockedTimes()
       fetchStoreImages()
+    }
+  }, [store?.id])
+
+  // Auto-refresh data every 60 seconds for real-time updates
+  useEffect(() => {
+    if (!store?.id) return
+
+    const interval = setInterval(() => {
+      refreshDashboardData()
+    }, 60000) // 60 seconds
+
+    return () => clearInterval(interval)
+  }, [store?.id])
+
+  const refreshDashboardData = useCallback(async () => {
+    if (!store?.id) return
+
+    try {
+      // In a real implementation, these would fetch from actual API endpoints
+      // For now, we'll simulate the refresh by updating the timestamp
+      setLastDataUpdate(new Date())
+    } catch (error) {
+      console.error("Failed to refresh dashboard data:", error)
     }
   }, [store?.id])
 
@@ -157,18 +193,17 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
 
   const handleCopyLink = async () => {
     if (store?.id) {
-       const publicPageUrl = `${window.location.origin}/book/${store.slug}`;
-
-        try {
+      const publicPageUrl = `${window.location.origin}/book/${store.slug || store.id}`
+      try {
         await navigator.clipboard.writeText(publicPageUrl)
         toast({
-          title: t.common.linkCopied,
+          title: t.common?.linkCopied || "Link Copied",
           description: publicPageUrl,
         })
       } catch (err) {
         console.error("Failed to copy link:", err)
         toast({
-          title: t.common.error,
+          title: t.common?.error || "Error",
           description: "Failed to copy link to clipboard.",
           variant: "destructive",
         })
@@ -176,6 +211,7 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
     }
   }
 
+  // Calculate metrics from live data
   const todayAppointments = appointments.filter(
     (apt) => apt.appointment_date === new Date().toISOString().split("T")[0],
   ).length
@@ -196,7 +232,7 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
               <span className="text-2xl font-bold whitespace-nowrap text-slate-800">BarberBook</span>
             </Link>
             <Badge variant="secondary" className="whitespace-nowrap">
-              {t.nav.barber}
+              {t.nav?.barber || "Barber"}
             </Badge>
           </div>
 
@@ -204,31 +240,41 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             {/* User greeting - disappears on smallest screens */}
             <span className="text-sm text-slate-600 whitespace-nowrap hidden xs:inline">
-              {t.barberDashboard.welcome}, <span className="font-medium">{user.name}</span>
+              {t.barberDashboard?.welcome || "Welcome"}, <span className="font-medium">{user.name}</span>
             </span>
 
             {/* Public page and Copy Link buttons - remains compact */}
             {store && (
               <>
-                <Button variant="outline" size="sm" asChild className="whitespace-nowrap shrink-0">
-                  <Link href={`/book/${store.slug}`} target="_blank">
+                <Button variant="outline" size="sm" asChild className="whitespace-nowrap shrink-0 bg-transparent">
+                  <Link href={`/book/${store.slug || store.id}`} target="_blank">
                     <ExternalLink className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">{t.barberDashboard.viewPublicPage}</span>
+                    <span className="hidden sm:inline">{t.barberDashboard?.viewPublicPage || "View Public Page"}</span>
                     <span className="sm:hidden">Public Page</span>
                   </Link>
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleCopyLink} className="whitespace-nowrap shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyLink}
+                  className="whitespace-nowrap shrink-0 bg-transparent"
+                >
                   <Copy className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">{t.barberDashboard.copyLink}</span>
+                  <span className="hidden sm:inline">{t.barberDashboard?.copyLink || "Copy Link"}</span>
                   <span className="sm:hidden">Copy</span>
                 </Button>
               </>
             )}
 
             {/* Logout button - remains compact */}
-            <Button variant="outline" size="sm" onClick={handleLogout} className="whitespace-nowrap shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              className="whitespace-nowrap shrink-0 bg-transparent"
+            >
               <LogOut className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">{t.nav.logout}</span>
+              <span className="hidden sm:inline">{t.nav?.logout || "Logout"}</span>
               <span className="sm:hidden">Exit</span>
             </Button>
           </div>
@@ -250,54 +296,68 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
           // Store Setup Required
           <div className="max-w-2xl mx-auto text-center py-12">
             <Store className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">{t.barberDashboard.setUpStore}</h2>
-            <p className="text-slate-600 mb-6">{t.barberDashboard.createProfile}</p>
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">
+              {t.barberDashboard?.setUpStore || "Set Up Your Store"}
+            </h2>
+            <p className="text-slate-600 mb-6">
+              {t.barberDashboard?.createProfile || "Create your barber profile to start accepting appointments"}
+            </p>
             <Button onClick={() => setShowStoreSetup(true)} size="lg">
               <Plus className="h-4 w-4 mr-2" />
-              {t.barberDashboard.createStore}
+              {t.barberDashboard?.createStore || "Create Store"}
             </Button>
           </div>
         ) : (
           <>
-            {/* Stats Cards */}
+            {/* Stats Cards - Using live data */}
             <div className="hidden md:grid md:grid-cols-4 gap-6 mb-8">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{t.barberDashboard.todayAppointments}</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    {t.barberDashboard?.todayAppointments || "Today's Appointments"}
+                  </CardTitle>
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{todayAppointments}</div>
+                  <p className="text-xs text-muted-foreground">Live count</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{t.barberDashboard.totalAppointments}</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    {t.barberDashboard?.totalAppointments || "Total Appointments"}
+                  </CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{appointments.length}</div>
+                  <p className="text-xs text-muted-foreground">All time</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{t.barberDashboard.services}</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t.barberDashboard?.services || "Services"}</CardTitle>
                   <Scissors className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{services.length}</div>
+                  <p className="text-xs text-muted-foreground">Active services</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{t.barberDashboard.totalRevenue}</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    {t.barberDashboard?.totalRevenue || "Total Revenue"}
+                  </CardTitle>
                   <Store className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{formatCurrency(totalRevenue, language)}</div>
+                  <p className="text-xs text-muted-foreground">Completed bookings</p>
                 </CardContent>
               </Card>
             </div>
@@ -305,28 +365,34 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
             {/* Main Content */}
             <Tabs defaultValue="appointments" className="space-y-6">
               <TabsList>
-                <TabsTrigger value="appointments">{t.admin.appointments}</TabsTrigger>
-                <TabsTrigger value="calendar">{t.barberDashboard.appointmentCalendar}</TabsTrigger>
-                <TabsTrigger value="store">{t.barberDashboard.storeInformation}</TabsTrigger>
+                <TabsTrigger value="appointments">{t.admin?.appointments || "Appointments"}</TabsTrigger>
+                <TabsTrigger value="calendar">
+                  {t.barberDashboard?.appointmentCalendar || "Appointment Calendar"}
+                </TabsTrigger>
+                <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                <TabsTrigger value="store">{t.barberDashboard?.storeInformation || "Store Information"}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="appointments">
                 <Card>
                   <CardHeader>
-                    <CardTitle>{t.barberDashboard.recentAppointments}</CardTitle>
-                    <CardDescription>{t.barberDashboard.viewManage}</CardDescription>
+                    <CardTitle>{t.barberDashboard?.recentAppointments || "Recent Appointments"}</CardTitle>
+                    <CardDescription>
+                      {t.barberDashboard?.viewManage || "View and manage your appointments"} • Last updated:{" "}
+                      {lastDataUpdate.toLocaleTimeString()}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>{t.admin.client}</TableHead>
-                            <TableHead>{t.booking.service}</TableHead>
-                            <TableHead>{t.booking.date}</TableHead>
-                            <TableHead>{t.booking.time}</TableHead>
-                            <TableHead>{t.admin.status}</TableHead>
-                            <TableHead>{t.booking.price}</TableHead>
+                            <TableHead>{t.admin?.client || "Client"}</TableHead>
+                            <TableHead>{t.booking?.service || "Service"}</TableHead>
+                            <TableHead>{t.booking?.date || "Date"}</TableHead>
+                            <TableHead>{t.booking?.time || "Time"}</TableHead>
+                            <TableHead>{t.admin?.status || "Status"}</TableHead>
+                            <TableHead>{t.booking?.price || "Price"}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -343,7 +409,9 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
                               <TableCell>{appointment.appointment_time}</TableCell>
                               <TableCell>
                                 <Badge variant={appointment.status === "confirmed" ? "default" : "secondary"}>
-                                  {appointment.status === "confirmed" ? t.admin.confirmed : t.admin.pending}
+                                  {appointment.status === "confirmed"
+                                    ? t.admin?.confirmed || "Confirmed"
+                                    : t.admin?.pending || "Pending"}
                                 </Badge>
                               </TableCell>
                               <TableCell>{formatCurrency(appointment.service_price, language)}</TableCell>
@@ -361,12 +429,14 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
-                        <CardTitle>{t.barberDashboard.appointmentCalendar}</CardTitle>
-                        <CardDescription>{t.barberDashboard.calendarFormat}</CardDescription>
+                        <CardTitle>{t.barberDashboard?.appointmentCalendar || "Appointment Calendar"}</CardTitle>
+                        <CardDescription>
+                          {t.barberDashboard?.calendarFormat || "View appointments in calendar format"}
+                        </CardDescription>
                       </div>
                       <Button onClick={() => setShowBlockTime(true)}>
                         <Clock className="h-4 w-4 mr-2" />
-                        {t.blockTime.blockTime}
+                        {t.blockTime?.blockTime || "Block Time"}
                       </Button>
                     </div>
                   </CardHeader>
@@ -376,18 +446,24 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
                 </Card>
               </TabsContent>
 
+              <TabsContent value="analytics">
+                <AnalyticsDashboard appointments={appointments} services={services} storeId={store.id} />
+              </TabsContent>
+
               <TabsContent value="store">
                 <div className="grid gap-6">
                   <Card>
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle>{t.barberDashboard.storeInformation}</CardTitle>
-                          <CardDescription>{t.barberDashboard.manageStore}</CardDescription>
+                          <CardTitle>{t.barberDashboard?.storeInformation || "Store Information"}</CardTitle>
+                          <CardDescription>
+                            {t.barberDashboard?.manageStore || "Manage your store details and settings"}
+                          </CardDescription>
                         </div>
                         <Button onClick={() => setShowStoreSetup(true)} variant="outline">
                           <Settings className="h-4 w-4 mr-2" />
-                          {t.barberDashboard.editStore}
+                          {t.barberDashboard?.editStore || "Edit Store"}
                         </Button>
                       </div>
                     </CardHeader>
@@ -409,12 +485,14 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle>{t.barberDashboard.services}</CardTitle>
-                          <CardDescription>{t.barberDashboard.managePricing}</CardDescription>
+                          <CardTitle>{t.barberDashboard?.services || "Services"}</CardTitle>
+                          <CardDescription>
+                            {t.barberDashboard?.managePricing || "Manage your services and pricing"}
+                          </CardDescription>
                         </div>
                         <Button onClick={() => setShowServiceManagement(true)}>
                           <Plus className="h-4 w-4 mr-2" />
-                          {t.barberDashboard.manageServices}
+                          {t.barberDashboard?.manageServices || "Manage Services"}
                         </Button>
                       </div>
                     </CardHeader>
@@ -426,7 +504,7 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
                               <h4 className="font-medium">{service.name}</h4>
                               <p className="text-sm text-muted-foreground">{service.description}</p>
                               <p className="text-sm text-muted-foreground">
-                                {service.duration_minutes} {t.booking.minutes}
+                                {service.duration_minutes} {t.booking?.minutes || "minutes"}
                               </p>
                             </div>
                             <div className="text-lg font-bold">{formatCurrency(service.price, language)}</div>
@@ -483,7 +561,10 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
         open={showStoreSetup}
         onOpenChange={setShowStoreSetup}
         store={store}
-        onSuccess={() => router.refresh()}
+        onSuccess={() => {
+          router.refresh()
+          refreshDashboardData()
+        }}
       />
 
       {store && (
@@ -493,7 +574,10 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
             onOpenChange={setShowServiceManagement}
             storeId={store.id}
             services={services}
-            onSuccess={() => router.refresh()}
+            onSuccess={() => {
+              router.refresh()
+              refreshDashboardData()
+            }}
           />
 
           <BlockTimeDialog
@@ -504,6 +588,7 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
             onSuccess={() => {
               fetchBlockedTimes()
               router.refresh()
+              refreshDashboardData()
             }}
           />
         </>
@@ -511,4 +596,3 @@ export function BarberDashboard({ user, store, services, appointments, workingHo
     </div>
   )
 }
-

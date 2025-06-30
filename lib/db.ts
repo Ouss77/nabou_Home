@@ -165,28 +165,17 @@ export async function getStoreByBarberId(barberId: string) {
   `
   return result[0] || null
 }
-
-export async function getStoreById(storeId: string) {
-  const result = await sql`
-    SELECT * FROM stores WHERE id = ${storeId}
-  `
-  return result[0] || null
-}
 export async function getStoreBySlug(slug: string) {
   const result = await sql`
     SELECT * FROM stores WHERE slug = ${slug}
   `
   return result[0] || null
 }
-
-
-export async function getStoreByName(storeName: string) {
-  console.log("getStoreByName called with:", storeName)
+export async function getStoreById(storeId: string) {
   const result = await sql`
-    SELECT * FROM stores WHERE title = ${storeName}
+    SELECT * FROM stores WHERE id = ${storeId}
   `
-  console.log("getStoreByName result:", result  )
-  return result[0] || null 
+  return result[0] || null
 }
 
 export async function createStore(
