@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -97,13 +97,7 @@ interface BarberDashboardProps {
   workingHours: WorkingHours[]
 }
 
-export function BarberDashboard({
-  user,
-  store,
-  services: initialServices,
-  appointments: initialAppointments,
-  workingHours,
-}: BarberDashboardProps) {
+export function BarberDashboard({ user, store, services, appointments, workingHours }: BarberDashboardProps) {
   const { t, language } = useLanguage()
   const { toast } = useToast()
   const [showStoreSetup, setShowStoreSetup] = useState(false)
@@ -113,12 +107,6 @@ export function BarberDashboard({
   const [storeImages, setStoreImages] = useState<StoreImage[]>([])
   const [loadingBlockedTimes, setLoadingBlockedTimes] = useState(false)
   const [loadingImages, setLoadingImages] = useState(false)
-
-  // State for real-time data updates
-  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments)
-  const [services, setServices] = useState<Service[]>(initialServices)
-  const [lastDataUpdate, setLastDataUpdate] = useState<Date>(new Date())
-
   const router = useRouter()
 
   // Fetch blocked times and images when store is available
@@ -126,29 +114,6 @@ export function BarberDashboard({
     if (store?.id) {
       fetchBlockedTimes()
       fetchStoreImages()
-    }
-  }, [store?.id])
-
-  // Auto-refresh data every 60 seconds for real-time updates
-  useEffect(() => {
-    if (!store?.id) return
-
-    const interval = setInterval(() => {
-      refreshDashboardData()
-    }, 60000) // 60 seconds
-
-    return () => clearInterval(interval)
-  }, [store?.id])
-
-  const refreshDashboardData = useCallback(async () => {
-    if (!store?.id) return
-
-    try {
-      // In a real implementation, these would fetch from actual API endpoints
-      // For now, we'll simulate the refresh by updating the timestamp
-      setLastDataUpdate(new Date())
-    } catch (error) {
-      console.error("Failed to refresh dashboard data:", error)
     }
   }, [store?.id])
 
@@ -211,7 +176,6 @@ export function BarberDashboard({
     }
   }
 
-  // Calculate metrics from live data
   const todayAppointments = appointments.filter(
     (apt) => apt.appointment_date === new Date().toISOString().split("T")[0],
   ).length
@@ -309,7 +273,7 @@ export function BarberDashboard({
           </div>
         ) : (
           <>
-            {/* Stats Cards - Using live data */}
+            {/* Stats Cards */}
             <div className="hidden md:grid md:grid-cols-4 gap-6 mb-8">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -320,7 +284,6 @@ export function BarberDashboard({
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{todayAppointments}</div>
-                  <p className="text-xs text-muted-foreground">Live count</p>
                 </CardContent>
               </Card>
 
@@ -333,7 +296,6 @@ export function BarberDashboard({
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{appointments.length}</div>
-                  <p className="text-xs text-muted-foreground">All time</p>
                 </CardContent>
               </Card>
 
@@ -344,7 +306,6 @@ export function BarberDashboard({
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{services.length}</div>
-                  <p className="text-xs text-muted-foreground">Active services</p>
                 </CardContent>
               </Card>
 
@@ -357,7 +318,6 @@ export function BarberDashboard({
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{formatCurrency(totalRevenue, language)}</div>
-                  <p className="text-xs text-muted-foreground">Completed bookings</p>
                 </CardContent>
               </Card>
             </div>
@@ -378,8 +338,7 @@ export function BarberDashboard({
                   <CardHeader>
                     <CardTitle>{t.barberDashboard?.recentAppointments || "Recent Appointments"}</CardTitle>
                     <CardDescription>
-                      {t.barberDashboard?.viewManage || "View and manage your appointments"} • Last updated:{" "}
-                      {lastDataUpdate.toLocaleTimeString()}
+                      {t.barberDashboard?.viewManage || "View and manage your appointments"}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -447,7 +406,7 @@ export function BarberDashboard({
               </TabsContent>
 
               <TabsContent value="analytics">
-                <AnalyticsDashboard appointments={appointments} services={services} storeId={store.id} />
+                <AnalyticsDashboard appointments={appointments} services={services} />
               </TabsContent>
 
               <TabsContent value="store">
@@ -561,10 +520,7 @@ export function BarberDashboard({
         open={showStoreSetup}
         onOpenChange={setShowStoreSetup}
         store={store}
-        onSuccess={() => {
-          router.refresh()
-          refreshDashboardData()
-        }}
+        onSuccess={() => router.refresh()}
       />
 
       {store && (
@@ -574,10 +530,7 @@ export function BarberDashboard({
             onOpenChange={setShowServiceManagement}
             storeId={store.id}
             services={services}
-            onSuccess={() => {
-              router.refresh()
-              refreshDashboardData()
-            }}
+            onSuccess={() => router.refresh()}
           />
 
           <BlockTimeDialog
@@ -588,7 +541,6 @@ export function BarberDashboard({
             onSuccess={() => {
               fetchBlockedTimes()
               router.refresh()
-              refreshDashboardData()
             }}
           />
         </>
