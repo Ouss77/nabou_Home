@@ -44,6 +44,7 @@ interface Service {
 }
 
 interface Appointment {
+  service_id: string
   id: string
   client_name: string
   client_email: string
@@ -91,18 +92,15 @@ interface StoreImage {
 
 interface BarberDashboardProps {
   user: User
+  storeId: string 
   store: StoreProps | null
   services: Service[]
   appointments: Appointment[]
   workingHours: WorkingHours[]
 }
 
-export function BarberDashboard({
-  user,
-  store,
-  services: initialServices,
-  appointments: initialAppointments,
-  workingHours,
+export function BarberDashboard({   user,  store,  storeId,   services: initialServices,   appointments: initialAppointments,
+  workingHours, 
 }: BarberDashboardProps) {
   const { t, language } = useLanguage()
   const { toast } = useToast()
@@ -113,14 +111,13 @@ export function BarberDashboard({
   const [storeImages, setStoreImages] = useState<StoreImage[]>([])
   const [loadingBlockedTimes, setLoadingBlockedTimes] = useState(false)
   const [loadingImages, setLoadingImages] = useState(false)
-
-  // State for real-time data updates
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments)
   const [services, setServices] = useState<Service[]>(initialServices)
   const [lastDataUpdate, setLastDataUpdate] = useState<Date>(new Date())
+  const [data, setData] = useState({ appointments: [], services: [] });
 
   const router = useRouter()
-
+  console.log("data", data)
   // Fetch blocked times and images when store is available
   useEffect(() => {
     if (store?.id) {
@@ -129,16 +126,12 @@ export function BarberDashboard({
     }
   }, [store?.id])
 
-  // Auto-refresh data every 60 seconds for real-time updates
+
   useEffect(() => {
-    if (!store?.id) return
-
-    const interval = setInterval(() => {
-      refreshDashboardData()
-    }, 60000) // 60 seconds
-
-    return () => clearInterval(interval)
-  }, [store?.id])
+    fetch(`/api/analytics/${storeId}`)
+      .then((res) => res.json())
+      .then(setData);
+  }, [storeId]);
 
   const refreshDashboardData = useCallback(async () => {
     if (!store?.id) return
@@ -216,9 +209,19 @@ export function BarberDashboard({
     (apt) => apt.appointment_date === new Date().toISOString().split("T")[0],
   ).length
 
-  const totalRevenue = appointments
-    .filter((apt) => apt.status === "completed")
-    .reduce((sum, apt) => sum + apt.service_price, 0)
+
+  
+const totalRevenue = (   appointments: Appointment[],   services: Service[] ): number => {
+  const servicePriceMap = new Map<string, number>(
+    services.map(service => [service.id, parseFloat(service.price)])
+  );
+
+  return appointments.reduce((sum, appointment) => {
+    const price = servicePriceMap.get(appointment.service_id) || 0;
+    return sum + price;
+  }, 0);
+};
+  console.log("Total Revenue:", totalRevenue(appointments, services));
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -356,7 +359,7 @@ export function BarberDashboard({
                   <Store className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(totalRevenue, language)}</div>
+                  <div className="text-2xl font-bold">{totalRevenue(appointments, services) } €</div>
                   <p className="text-xs text-muted-foreground">Completed bookings</p>
                 </CardContent>
               </Card>
@@ -445,10 +448,14 @@ export function BarberDashboard({
                   </CardContent>
                 </Card>
               </TabsContent>
-
+ 
               <TabsContent value="analytics">
-                <AnalyticsDashboard appointments={appointments} services={services} storeId={store.id} />
-              </TabsContent>
+              <AnalyticsDashboard
+      appointments={data.appointments}
+      services={data.services}
+      storeId={storeId}
+      
+    />              </TabsContent>
 
               <TabsContent value="store">
                 <div className="grid gap-6">
