@@ -204,10 +204,22 @@ export function BarberDashboard({   user,  store,  storeId,   services: initialS
     }
   }
 
-  // Calculate metrics from live data
-  const todayAppointments = appointments.filter(
-    (apt) => apt.appointment_date === new Date().toISOString().split("T")[0],
-  ).length
+ const formatDate = (date: Date): string => {
+  return date.toLocaleDateString("fr-CA"); // "YYYY-MM-DD" format, locale-safe
+};
+
+const today = formatDate(new Date());
+
+const todayAppointments = appointments.filter((apt) => {
+  const aptDateStr = formatDate(new Date(apt.appointment_date));
+  return aptDateStr === today;
+}).length;
+
+console.log("Today Appointments:", todayAppointments);
+console.log("today date", today);
+appointments.forEach((apt) => {
+  console.log("APT RAW:", apt.appointment_date, "→", formatDate(new Date(apt.appointment_date)));
+});
 
 
   
