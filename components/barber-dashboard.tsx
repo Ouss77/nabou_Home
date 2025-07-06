@@ -6,13 +6,26 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Calendar, Store, Users, LogOut, Scissors, Plus, ExternalLink, Settings, Clock, Copy } from "lucide-react"
+import {
+  Calendar,
+  Store,
+  Users,
+  LogOut,
+  Scissors,
+  Plus,
+  ExternalLink,
+  Settings,
+  Clock,
+  Copy,
+  RefreshCw,
+} from "lucide-react"
 import { StoreSetupDialog } from "@/components/store-setup-dialog"
 import { ServiceManagementDialog } from "@/components/service-management-dialog"
 import { BlockTimeDialog } from "@/components/block-time-dialog"
 import { AppointmentCalendar } from "@/components/appointment-calendar"
 import { ImageUpload } from "@/components/image-upload"
 import { AnalyticsDashboard } from "@/components/analytics-dashboard"
+import { AppointmentStatusSelector } from "@/components/appointment-status-selector"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useLanguage } from "@/components/language-provider"
@@ -53,7 +66,7 @@ interface Appointment {
   appointment_time: string
   service_name: string
   service_price: number
-  status: string
+  status: "pending" | "confirmed" | "cancelled" | "completed"
   notes: string
   age?: number
 }
@@ -92,15 +105,20 @@ interface StoreImage {
 
 interface BarberDashboardProps {
   user: User
-  storeId: string 
+  storeId: string
   store: StoreProps | null
   services: Service[]
   appointments: Appointment[]
   workingHours: WorkingHours[]
 }
 
-export function BarberDashboard({   user,  store,  storeId,   services: initialServices,   appointments: initialAppointments,
-  workingHours, 
+export function BarberDashboard({
+  user,
+  store,
+  storeId,
+  services: initialServices,
+  appointments: initialAppointments,
+  workingHours,
 }: BarberDashboardProps) {
   const { t, language } = useLanguage()
   const { toast } = useToast()
@@ -114,10 +132,11 @@ export function BarberDashboard({   user,  store,  storeId,   services: initialS
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments)
   const [services, setServices] = useState<Service[]>(initialServices)
   const [lastDataUpdate, setLastDataUpdate] = useState<Date>(new Date())
-  const [data, setData] = useState({ appointments: [], services: [] });
+  const [data, setData] = useState({ appointments: [], services: [] })
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const router = useRouter()
-  console.log("data", data)
+
   // Fetch blocked times and images when store is available
   useEffect(() => {
     if (store?.id) {
@@ -126,24 +145,62 @@ export function BarberDashboard({   user,  store,  storeId,   services: initialS
     }
   }, [store?.id])
 
-
   useEffect(() => {
-    fetch(`/api/analytics/${storeId}`)
-      .then((res) => res.json())
-      .then(setData);
-  }, [storeId]);
+    if (storeId) {
+      fetch(`/api/analytics/${storeId}`)
+        .then((res) => res.json())
+        .then(setData)
+        .catch(console.error)
+    }
+  }, [storeId])
 
   const refreshDashboardData = useCallback(async () => {
     if (!store?.id) return
 
+    setIsRefreshing(true)
     try {
-      // In a real implementation, these would fetch from actual API endpoints
-      // For now, we'll simulate the refresh by updating the timestamp
+      // Refresh appointments data
+      const appointmentsResponse = await fetch(`/api/barber/appointments?storeId=${store.id}`)
+      if (appointmentsResponse.ok) {
+        const appointmentsData = await appointmentsResponse.json()
+        setAppointments(appointmentsData)
+      }
+
+      // Refresh analytics data
+      const analyticsResponse = await fetch(`/api/analytics/${store.id}`)
+      if (analyticsResponse.ok) {
+        const analyticsData = await analyticsResponse.json()
+        setData(analyticsData)
+      }
+
       setLastDataUpdate(new Date())
+
+      toast({
+        title: "Data Refreshed",
+        description: "Dashboard data has been updated with the latest information.",
+      })
     } catch (error) {
       console.error("Failed to refresh dashboard data:", error)
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh dashboard data. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsRefreshing(false)
     }
-  }, [store?.id])
+  }, [store?.id, toast])
+
+  const handleStatusChange = (
+    appointmentId: string,
+    newStatus: "pending" | "confirmed" | "cancelled" | "completed",
+  ) => {
+    // Optimistically update the local state
+    setAppointments((prev) => prev.map((apt) => (apt.id === appointmentId ? { ...apt, status: newStatus } : apt)))
+
+    // Update the last data update timestamp
+    setLastDataUpdate(new Date())
+  }
 
   const fetchBlockedTimes = async () => {
     if (!store?.id) return
@@ -204,36 +261,29 @@ export function BarberDashboard({   user,  store,  storeId,   services: initialS
     }
   }
 
- const formatDate = (date: Date): string => {
-  return date.toLocaleDateString("fr-CA"); // "YYYY-MM-DD" format, locale-safe
-};
+  const formatDate = (date: Date): string => {
+    return date.toLocaleDateString("fr-CA") // "YYYY-MM-DD" format, locale-safe
+  }
 
-const today = formatDate(new Date());
+  const today = formatDate(new Date())
 
-const todayAppointments = appointments.filter((apt) => {
-  const aptDateStr = formatDate(new Date(apt.appointment_date));
-  return aptDateStr === today;
-}).length;
+  const todayAppointments = appointments.filter((apt) => {
+    const aptDateStr = formatDate(new Date(apt.appointment_date))
+    return aptDateStr === today
+  }).length
 
-console.log("Today Appointments:", todayAppointments);
-console.log("today date", today);
-appointments.forEach((apt) => {
-  console.log("APT RAW:", apt.appointment_date, "→", formatDate(new Date(apt.appointment_date)));
-});
+  const totalRevenue = (appointments: Appointment[], services: Service[]): number => {
+    const servicePriceMap = new Map<string, number>(
+      services.map((service) => [service.id, Number.parseFloat(service.price.toString())]),
+    )
 
-
-  
-const totalRevenue = (   appointments: Appointment[],   services: Service[] ): number => {
-  const servicePriceMap = new Map<string, number>(
-    services.map(service => [service.id, parseFloat(service.price)])
-  );
-
-  return appointments.reduce((sum, appointment) => {
-    const price = servicePriceMap.get(appointment.service_id) || 0;
-    return sum + price;
-  }, 0);
-};
-  console.log("Total Revenue:", totalRevenue(appointments, services));
+    return appointments
+      .filter((apt) => apt.status === "completed")
+      .reduce((sum, appointment) => {
+        const price = servicePriceMap.get(appointment.service_id) || appointment.service_price || 0
+        return sum + price
+      }, 0)
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -257,6 +307,18 @@ const totalRevenue = (   appointments: Appointment[],   services: Service[] ): n
             <span className="text-sm text-slate-600 whitespace-nowrap hidden xs:inline">
               {t.barberDashboard?.welcome || "Welcome"}, <span className="font-medium">{user.name}</span>
             </span>
+
+            {/* Refresh button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refreshDashboardData}
+              disabled={isRefreshing}
+              className="whitespace-nowrap shrink-0 bg-transparent"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
 
             {/* Public page and Copy Link buttons - remains compact */}
             {store && (
@@ -371,7 +433,7 @@ const totalRevenue = (   appointments: Appointment[],   services: Service[] ): n
                   <Store className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{totalRevenue(appointments, services) } €</div>
+                  <div className="text-2xl font-bold">{totalRevenue(appointments, services)} €</div>
                   <p className="text-xs text-muted-foreground">Completed bookings</p>
                 </CardContent>
               </Card>
@@ -391,11 +453,19 @@ const totalRevenue = (   appointments: Appointment[],   services: Service[] ): n
               <TabsContent value="appointments">
                 <Card>
                   <CardHeader>
-                    <CardTitle>{t.barberDashboard?.recentAppointments || "Recent Appointments"}</CardTitle>
-                    <CardDescription>
-                      {t.barberDashboard?.viewManage || "View and manage your appointments"} • Last updated:{" "}
-                      {lastDataUpdate.toLocaleTimeString()}
-                    </CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>{t.barberDashboard?.recentAppointments || "Recent Appointments"}</CardTitle>
+                        <CardDescription>
+                          {t.barberDashboard?.viewManage || "View and manage your appointments"} • Last updated:{" "}
+                          {lastDataUpdate.toLocaleTimeString()}
+                        </CardDescription>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={refreshDashboardData} disabled={isRefreshing}>
+                        <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+                        Refresh
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="overflow-x-auto">
@@ -417,21 +487,38 @@ const totalRevenue = (   appointments: Appointment[],   services: Service[] ): n
                                 <div>
                                   <div className="font-medium">{appointment.client_name}</div>
                                   <div className="text-sm text-muted-foreground">{appointment.client_email}</div>
+                                  {appointment.client_phone && (
+                                    <div className="text-sm text-muted-foreground">{appointment.client_phone}</div>
+                                  )}
                                 </div>
                               </TableCell>
-                              <TableCell>{appointment.service_name}</TableCell>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">{appointment.service_name}</div>
+                                  {appointment.notes && (
+                                    <div className="text-sm text-muted-foreground">{appointment.notes}</div>
+                                  )}
+                                </div>
+                              </TableCell>
                               <TableCell>{new Date(appointment.appointment_date).toLocaleDateString()}</TableCell>
                               <TableCell>{appointment.appointment_time}</TableCell>
                               <TableCell>
-                                <Badge variant={appointment.status === "confirmed" ? "default" : "secondary"}>
-                                  {appointment.status === "confirmed"
-                                    ? t.admin?.confirmed || "Confirmed"
-                                    : t.admin?.pending || "Pending"}
-                                </Badge>
+                                <AppointmentStatusSelector
+                                  appointmentId={appointment.id}
+                                  currentStatus={appointment.status}
+                                  onStatusChange={(newStatus) => handleStatusChange(appointment.id, newStatus)}
+                                />
                               </TableCell>
                               <TableCell>{formatCurrency(appointment.service_price, language)}</TableCell>
                             </TableRow>
                           ))}
+                          {appointments.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                No appointments found. Your upcoming bookings will appear here.
+                              </TableCell>
+                            </TableRow>
+                          )}
                         </TableBody>
                       </Table>
                     </div>
@@ -460,14 +547,10 @@ const totalRevenue = (   appointments: Appointment[],   services: Service[] ): n
                   </CardContent>
                 </Card>
               </TabsContent>
- 
+
               <TabsContent value="analytics">
-              <AnalyticsDashboard
-      appointments={data.appointments}
-      services={data.services}
-      storeId={storeId}
-      
-    />              </TabsContent>
+                <AnalyticsDashboard appointments={data.appointments} services={data.services} storeId={storeId} />
+              </TabsContent>
 
               <TabsContent value="store">
                 <div className="grid gap-6">
