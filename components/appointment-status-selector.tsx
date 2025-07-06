@@ -32,28 +32,28 @@ const statusConfig = {
     variant: "secondary" as const,
     icon: Clock,
     color: "text-yellow-600",
-    bgColor: "bg-yellow-50 border-yellow-200",
+    bgColor: "bg-yellow-50 border-yellow-200 hover:bg-yellow-100",
   },
   confirmed: {
     label: "Confirmed",
     variant: "default" as const,
     icon: Check,
     color: "text-blue-600",
-    bgColor: "bg-blue-50 border-blue-200",
+    bgColor: "bg-blue-50 border-blue-200 hover:bg-blue-100",
   },
   cancelled: {
     label: "Cancelled",
     variant: "destructive" as const,
     icon: X,
     color: "text-red-600",
-    bgColor: "bg-red-50 border-red-200",
+    bgColor: "bg-red-50 border-red-200 hover:bg-red-100",
   },
   completed: {
     label: "Completed",
     variant: "outline" as const,
     icon: CheckCircle,
     color: "text-green-600",
-    bgColor: "bg-green-50 border-green-200",
+    bgColor: "bg-green-50 border-green-200 hover:bg-green-100",
   },
 }
 
@@ -66,11 +66,16 @@ export function AppointmentStatusSelector({
   const [isUpdating, setIsUpdating] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<AppointmentStatus | null>(null)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const { toast } = useToast()
 
   const handleStatusSelect = (newStatus: AppointmentStatus) => {
-    if (newStatus === currentStatus) return
+    if (newStatus === currentStatus) {
+      setDropdownOpen(false)
+      return
+    }
 
+    setDropdownOpen(false)
     setPendingStatus(newStatus)
     setShowConfirmDialog(true)
   }
@@ -91,7 +96,8 @@ export function AppointmentStatusSelector({
       })
 
       if (!response.ok) {
-        throw new Error("Failed to update status")
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to update status")
       }
 
       const data = await response.json()
@@ -107,7 +113,7 @@ export function AppointmentStatusSelector({
       console.error("Error updating status:", error)
       toast({
         title: "Update Failed",
-        description: "Failed to update appointment status. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to update appointment status. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -135,17 +141,13 @@ export function AppointmentStatusSelector({
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`h-auto p-1 hover:bg-transparent ${isUpdating ? "cursor-not-allowed" : "cursor-pointer"}`}
-            disabled={isUpdating}
-          >
-            <Badge
-              variant={currentConfig.variant}
-              className={`${currentConfig.bgColor} ${currentConfig.color} hover:opacity-80 transition-opacity`}
+          <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent" disabled={isUpdating}>
+            <div
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border cursor-pointer transition-colors ${
+                currentConfig.bgColor
+              } ${currentConfig.color} ${isUpdating ? "cursor-not-allowed opacity-60" : "hover:opacity-80"}`}
             >
               {isUpdating ? (
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
@@ -154,7 +156,7 @@ export function AppointmentStatusSelector({
               )}
               {currentConfig.label}
               <ChevronDown className="h-3 w-3 ml-1" />
-            </Badge>
+            </div>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-40">
