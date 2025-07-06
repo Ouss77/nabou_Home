@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
@@ -15,7 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
-import { ChevronDown, Check, Clock, X, CheckCircle, Loader2 } from "lucide-react"
+import { CheckCircle, Clock, XCircle, AlertCircle, ChevronDown } from "lucide-react"
 
 type AppointmentStatus = "pending" | "confirmed" | "cancelled" | "completed"
 
@@ -23,37 +22,40 @@ interface AppointmentStatusSelectorProps {
   appointmentId: string
   currentStatus: AppointmentStatus
   onStatusChange: (newStatus: AppointmentStatus) => void
-  disabled?: boolean
 }
 
 const statusConfig = {
   pending: {
     label: "Pending",
-    variant: "secondary" as const,
     icon: Clock,
+    variant: "secondary" as const,
     color: "text-yellow-600",
-    bgColor: "bg-yellow-50 border-yellow-200 hover:bg-yellow-100",
+    bgColor: "bg-yellow-50 hover:bg-yellow-100",
+    borderColor: "border-yellow-200",
   },
   confirmed: {
     label: "Confirmed",
+    icon: CheckCircle,
     variant: "default" as const,
-    icon: Check,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50 border-blue-200 hover:bg-blue-100",
+    color: "text-green-600",
+    bgColor: "bg-green-50 hover:bg-green-100",
+    borderColor: "border-green-200",
   },
   cancelled: {
     label: "Cancelled",
+    icon: XCircle,
     variant: "destructive" as const,
-    icon: X,
     color: "text-red-600",
-    bgColor: "bg-red-50 border-red-200 hover:bg-red-100",
+    bgColor: "bg-red-50 hover:bg-red-100",
+    borderColor: "border-red-200",
   },
   completed: {
     label: "Completed",
-    variant: "outline" as const,
     icon: CheckCircle,
-    color: "text-green-600",
-    bgColor: "bg-green-50 border-green-200 hover:bg-green-100",
+    variant: "default" as const,
+    color: "text-blue-600",
+    bgColor: "bg-blue-50 hover:bg-blue-100",
+    borderColor: "border-blue-200",
   },
 }
 
@@ -61,30 +63,32 @@ export function AppointmentStatusSelector({
   appointmentId,
   currentStatus,
   onStatusChange,
-  disabled = false,
 }: AppointmentStatusSelectorProps) {
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-  const [pendingStatus, setPendingStatus] = useState<AppointmentStatus | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
+  const [pendingStatus, setPendingStatus] = useState<AppointmentStatus | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
   const { toast } = useToast()
 
-  const handleStatusSelect = (newStatus: AppointmentStatus) => {
-    if (newStatus === currentStatus) {
-      setDropdownOpen(false)
-      return
-    }
+  const currentConfig = statusConfig[currentStatus]
+  const CurrentIcon = currentConfig.icon
 
+  const handleStatusSelect = (newStatus: AppointmentStatus) => {
     setDropdownOpen(false)
-    setPendingStatus(newStatus)
-    setShowConfirmDialog(true)
+
+    if (newStatus === currentStatus) return
+
+    // Show confirmation for destructive actions
+    if (newStatus === "cancelled" || newStatus === "completed") {
+      setPendingStatus(newStatus)
+      setConfirmDialogOpen(true)
+    } else {
+      updateStatus(newStatus)
+    }
   }
 
-  const confirmStatusChange = async () => {
-    if (!pendingStatus) return
-
+  const updateStatus = async (newStatus: AppointmentStatus) => {
     setIsUpdating(true)
-    setShowConfirmDialog(false)
 
     try {
       const response = await fetch(`/api/barber/appointments/${appointmentId}/status`, {
@@ -92,116 +96,130 @@ export function AppointmentStatusSelector({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ status: pendingStatus }),
+        body: JSON.stringify({ status: newStatus }),
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to update status")
+        throw new Error("Failed to update status")
       }
 
-      const data = await response.json()
-
-      // Update the status optimistically
-      onStatusChange(pendingStatus)
+      // Call the parent callback to update the UI optimistically
+      onStatusChange(newStatus)
 
       toast({
         title: "Status Updated",
-        description: `Appointment status changed to ${statusConfig[pendingStatus].label}`,
+        description: `Appointment status changed to ${statusConfig[newStatus].label.toLowerCase()}.`,
       })
     } catch (error) {
-      console.error("Error updating status:", error)
+      console.error("Failed to update appointment status:", error)
       toast({
         title: "Update Failed",
-        description: error instanceof Error ? error.message : "Failed to update appointment status. Please try again.",
+        description: "Failed to update appointment status. Please try again.",
         variant: "destructive",
       })
     } finally {
       setIsUpdating(false)
+      setConfirmDialogOpen(false)
       setPendingStatus(null)
     }
   }
 
-  const cancelStatusChange = () => {
-    setShowConfirmDialog(false)
-    setPendingStatus(null)
+  const handleConfirm = () => {
+    if (pendingStatus) {
+      updateStatus(pendingStatus)
+    }
   }
 
-  const currentConfig = statusConfig[currentStatus]
-  const CurrentIcon = currentConfig.icon
-
-  if (disabled) {
-    return (
-      <Badge variant={currentConfig.variant} className="cursor-not-allowed opacity-60">
-        <CurrentIcon className="h-3 w-3 mr-1" />
-        {currentConfig.label}
-      </Badge>
-    )
+  const getConfirmationMessage = (status: AppointmentStatus) => {
+    switch (status) {
+      case "cancelled":
+        return {
+          title: "Cancel Appointment",
+          description: "Are you sure you want to cancel this appointment? This action cannot be undone.",
+        }
+      case "completed":
+        return {
+          title: "Mark as Completed",
+          description:
+            "Are you sure you want to mark this appointment as completed? This will count towards your revenue.",
+        }
+      default:
+        return {
+          title: "Update Status",
+          description: "Are you sure you want to update this appointment status?",
+        }
+    }
   }
+
+  const confirmationMessage = pendingStatus ? getConfirmationMessage(pendingStatus) : null
 
   return (
     <>
       <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent" disabled={isUpdating}>
-            <div
-              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border cursor-pointer transition-colors ${
-                currentConfig.bgColor
-              } ${currentConfig.color} ${isUpdating ? "cursor-not-allowed opacity-60" : "hover:opacity-80"}`}
-            >
-              {isUpdating ? (
-                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-              ) : (
-                <CurrentIcon className="h-3 w-3 mr-1" />
-              )}
-              {currentConfig.label}
-              <ChevronDown className="h-3 w-3 ml-1" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`h-auto p-2 ${currentConfig.bgColor} ${currentConfig.borderColor} border transition-colors`}
+            disabled={isUpdating}
+          >
+            <div className="flex items-center gap-2">
+              <CurrentIcon className={`h-4 w-4 ${currentConfig.color}`} />
+              <span className={`text-sm font-medium ${currentConfig.color}`}>{currentConfig.label}</span>
+              <ChevronDown
+                className={`h-3 w-3 ${currentConfig.color} transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
+              />
             </div>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-40">
-          {Object.entries(statusConfig).map(([status, config]) => {
-            const Icon = config.icon
-            const isSelected = status === currentStatus
+          {(Object.entries(statusConfig) as [AppointmentStatus, (typeof statusConfig)[AppointmentStatus]][]).map(
+            ([status, config]) => {
+              const Icon = config.icon
+              const isCurrentStatus = status === currentStatus
 
-            return (
-              <DropdownMenuItem
-                key={status}
-                onClick={() => handleStatusSelect(status as AppointmentStatus)}
-                className={`cursor-pointer ${isSelected ? "bg-accent" : ""}`}
-              >
-                <Icon className={`h-4 w-4 mr-2 ${config.color}`} />
-                <span className={isSelected ? "font-medium" : ""}>{config.label}</span>
-                {isSelected && <Check className="h-4 w-4 ml-auto" />}
-              </DropdownMenuItem>
-            )
-          })}
+              return (
+                <DropdownMenuItem
+                  key={status}
+                  onClick={() => handleStatusSelect(status)}
+                  className={`flex items-center gap-2 cursor-pointer ${isCurrentStatus ? "bg-muted" : ""}`}
+                  disabled={isCurrentStatus}
+                >
+                  <Icon className={`h-4 w-4 ${config.color}`} />
+                  <span className={config.color}>{config.label}</span>
+                  {isCurrentStatus && <CheckCircle className="h-3 w-3 ml-auto text-muted-foreground" />}
+                </DropdownMenuItem>
+              )
+            },
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Status Change</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to change the appointment status from{" "}
-              <span className="font-medium">{statusConfig[currentStatus].label}</span> to{" "}
-              <span className="font-medium">{pendingStatus ? statusConfig[pendingStatus].label : ""}</span>?
-              {pendingStatus === "cancelled" && (
-                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-800 text-sm">
-                  <strong>Note:</strong> Cancelling this appointment will free up the time slot for other bookings.
-                </div>
-              )}
-              {pendingStatus === "completed" && (
-                <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-green-800 text-sm">
-                  <strong>Note:</strong> Marking as completed will finalize this appointment.
-                </div>
-              )}
-            </AlertDialogDescription>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-500" />
+              {confirmationMessage?.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{confirmationMessage?.description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelStatusChange}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmStatusChange}>Confirm Change</AlertDialogAction>
+            <AlertDialogCancel
+              onClick={() => {
+                setConfirmDialogOpen(false)
+                setPendingStatus(null)
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirm}
+              disabled={isUpdating}
+              className={pendingStatus === "cancelled" ? "bg-red-600 hover:bg-red-700" : ""}
+            >
+              {isUpdating ? "Updating..." : "Confirm"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -11,7 +11,7 @@ export default async function BarberPage() {
 
   return (
     <BarberDashboard
-      storeId={store.id}  
+      storeId={store?.id || ""}
       user={user}
       store={store}
       services={services}

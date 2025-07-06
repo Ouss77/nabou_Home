@@ -146,13 +146,13 @@ export function BarberDashboard({
   }, [store?.id])
 
   useEffect(() => {
-    if (storeId) {
+    if (storeId && store?.id) {
       fetch(`/api/analytics/${storeId}`)
         .then((res) => res.json())
         .then(setData)
         .catch(console.error)
     }
-  }, [storeId])
+  }, [storeId, store?.id])
 
   const refreshDashboardData = useCallback(async () => {
     if (!store?.id) return
@@ -308,17 +308,19 @@ export function BarberDashboard({
               {t.barberDashboard?.welcome || "Welcome"}, <span className="font-medium">{user.name}</span>
             </span>
 
-            {/* Refresh button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={refreshDashboardData}
-              disabled={isRefreshing}
-              className="whitespace-nowrap shrink-0 bg-transparent"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">Refresh</span>
-            </Button>
+            {/* Refresh button - only show if store exists */}
+            {store && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshDashboardData}
+                disabled={isRefreshing}
+                className="whitespace-nowrap shrink-0 bg-transparent"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </Button>
+            )}
 
             {/* Public page and Copy Link buttons - remains compact */}
             {store && (
