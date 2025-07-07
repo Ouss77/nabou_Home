@@ -29,9 +29,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     // Update the appointment status
     const result = await sql`
       UPDATE appointments 
-      SET status = ${status}, updated_at = NOW()
+      SET status = ${status}
       WHERE id = ${appointmentId}
-      RETURNING id, status, updated_at
+      RETURNING id, status
     `
 
     if (result.length === 0) {
