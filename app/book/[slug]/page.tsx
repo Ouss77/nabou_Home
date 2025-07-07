@@ -14,3 +14,4 @@ export default async function PublicBookingPage({ params }: { params: { slug: st
 
   return <BookingPage store={store} services={services} />;
 }
+ 

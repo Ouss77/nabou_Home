@@ -31,8 +31,8 @@ interface Appointment {
   client_phone: string
   appointment_date: string
   appointment_time: string
+  service_id: string  // ✅ You need this to look up service price
   service_name: string
-  service_price: number
   status: string
   notes: string
   age?: number
@@ -48,7 +48,7 @@ interface Service {
 
 interface AnalyticsDashboardProps {
   appointments: Appointment[]
-  services: Service[]
+  services: Service[] 
   storeId: string
 }
 
@@ -57,8 +57,9 @@ const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8", "#82CA9D"
 export function AnalyticsDashboard({
   appointments: initialAppointments,
   services: initialServices,
-  storeId,
+  storeId, 
 }: AnalyticsDashboardProps) {
+
   const { language } = useLanguage()
   const { toast } = useToast()
   const [dateRange, setDateRange] = useState<string>("30")
@@ -68,14 +69,16 @@ export function AnalyticsDashboard({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
 
-  // Auto-refresh data every 60 seconds to ensure real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refreshData()
-    }, 60000) // 60 seconds
 
-    return () => clearInterval(interval)
-  }, [storeId])
+  const servicePriceMap = useMemo(
+  () =>
+    new Map<string, number>(
+      services.map((service) => [service.id, parseFloat(service.price as any)])
+    ),
+  [services]
+)
+
+
 
   // Update local state when props change (for real-time updates from parent)
   useEffect(() => {
@@ -124,10 +127,23 @@ export function AnalyticsDashboard({
     })
   }, [appointments, dateRange, selectedService])
 
-  // Calculate key metrics from live data
-  const totalRevenue = useMemo(() => {
-    return filteredAppointments.reduce((sum, apt) => sum + apt.service_price, 0)
-  }, [filteredAppointments])
+// const totalRevenue = useMemo(() => {
+//   const servicePriceMap = new Map<string, number>(
+//     services.map(service => [service.id, parseFloat(service.price)])
+//   );
+
+//   return filteredAppointments.reduce((sum, appointment) => {
+//     const price = servicePriceMap.get(appointment.service_id) || 0;
+//     return sum + price;
+//   }, 0);
+// }, [filteredAppointments, services]);
+
+const totalRevenue = useMemo(() => {
+  return filteredAppointments.reduce((sum, appointment) => {
+    const price = servicePriceMap.get(appointment.service_id) || 0
+    return sum + price
+  }, 0)
+}, [filteredAppointments, servicePriceMap])
 
   const averageBookingValue = useMemo(() => {
     return filteredAppointments.length > 0 ? totalRevenue / filteredAppointments.length : 0
@@ -141,7 +157,7 @@ export function AnalyticsDashboard({
       const date = apt.appointment_date
       const current = dateMap.get(date) || { revenue: 0, appointments: 0 }
       dateMap.set(date, {
-        revenue: current.revenue + apt.service_price,
+        revenue: current.revenue + (servicePriceMap.get(apt.service_id) || 0),
         appointments: current.appointments + 1,
       })
     })
@@ -158,65 +174,78 @@ export function AnalyticsDashboard({
   }, [filteredAppointments])
 
   // Revenue by service data with current service prices - Live data
-  const revenueByService = useMemo(() => {
-    const serviceMap = new Map<string, { revenue: number; count: number; basePrice: number }>()
+const revenueByService = useMemo(() => {
+  const serviceMap = new Map<string, { revenue: number; count: number; basePrice: number }>()
 
-    filteredAppointments.forEach((apt) => {
-      const service = services.find((s) => s.name === apt.service_name)
-      const current = serviceMap.get(apt.service_name) || { revenue: 0, count: 0, basePrice: service?.price || 0 }
-      serviceMap.set(apt.service_name, {
-        revenue: current.revenue + apt.service_price,
-        count: current.count + 1,
-        basePrice: service?.price || apt.service_price,
-      })
+  filteredAppointments.forEach((apt) => {
+    const service = services.find((s) => s.id === apt.service_id)
+    const name = service?.name || apt.service_name
+    const price = Number(service?.price) || 0
+    const current = serviceMap.get(name) || { revenue: 0, count: 0, basePrice: price }
+
+    serviceMap.set(name, {
+      revenue: current.revenue + price,
+      count: current.count + 1,
+      basePrice: price,
     })
+  })
 
-    return Array.from(serviceMap.entries()).map(([service, data]) => ({
-      service: service.length > 15 ? service.substring(0, 15) + "..." : service,
-      fullServiceName: service,
-      revenue: data.revenue,
-      count: data.count,
-      basePrice: data.basePrice,
-      averagePrice: data.revenue / data.count,
-    }))
-  }, [filteredAppointments, services])
+  return Array.from(serviceMap.entries()).map(([service, data]) => ({
+    service: service.length > 15 ? service.substring(0, 15) + "..." : service,
+    fullServiceName: service,
+    revenue: data.revenue,
+    count: data.count,
+    basePrice: data.basePrice,
+    averagePrice: data.count > 0 ? data.revenue / data.count : 0,
+  }))
+}, [filteredAppointments, services])
+
 
   // Revenue by age group data - Live data
-  const revenueByAge = useMemo(() => {
-    const ageGroups = {
-      "18-25": { revenue: 0, count: 0 },
-      "26-35": { revenue: 0, count: 0 },
-      "36-45": { revenue: 0, count: 0 },
-      "46-55": { revenue: 0, count: 0 },
-      "56+": { revenue: 0, count: 0 },
-      Unknown: { revenue: 0, count: 0 },
+const revenueByAge = useMemo(() => {
+  const ageGroups = {
+    "18-25": { revenue: 0, count: 0 },
+    "26-35": { revenue: 0, count: 0 },
+    "36-45": { revenue: 0, count: 0 },
+    "46-55": { revenue: 0, count: 0 },
+    "56+": { revenue: 0, count: 0 },
+    "<18": { revenue: 0, count: 0 },
+  };
+
+  // Map service_id -> price
+  const servicePriceMap = new Map<string, number>(
+    services.map(service => [service.id, parseFloat(service.price)])
+  );
+
+  filteredAppointments.forEach((apt) => {
+    const age = apt.age;
+    let group = "<18";
+
+    if (age) {
+      if (age < 18) group = "<18";
+      else if (age >= 18 && age <= 25) group = "18-25";
+      else if (age >= 26 && age <= 35) group = "26-35";
+      else if (age >= 36 && age <= 45) group = "36-45";
+      else if (age >= 46 && age <= 55) group = "46-55";
+      else if (age >= 56) group = "56+";
     }
 
-    filteredAppointments.forEach((apt) => {
-      const age = apt.age
-      let group = "Unknown"
+    const price = servicePriceMap.get(apt.service_id) || 0;
 
-      if (age) {
-        if (age >= 18 && age <= 25) group = "18-25"
-        else if (age >= 26 && age <= 35) group = "26-35"
-        else if (age >= 36 && age <= 45) group = "36-45"
-        else if (age >= 46 && age <= 55) group = "46-55"
-        else if (age >= 56) group = "56+"
-      }
+    ageGroups[group as keyof typeof ageGroups].revenue += price;
+    ageGroups[group as keyof typeof ageGroups].count += 1;
+  });
 
-      ageGroups[group as keyof typeof ageGroups].revenue += apt.service_price
-      ageGroups[group as keyof typeof ageGroups].count += 1
-    })
+  return Object.entries(ageGroups)
+    .filter(([_, data]) => data.count > 0)
+    .map(([ageGroup, data]) => ({
+      ageGroup,
+      revenue: data.revenue,
+      count: data.count,
+      averageSpend: data.revenue / data.count,
+    }));
+}, [filteredAppointments, services]);
 
-    return Object.entries(ageGroups)
-      .filter(([_, data]) => data.count > 0)
-      .map(([ageGroup, data]) => ({
-        ageGroup,
-        revenue: data.revenue,
-        count: data.count,
-        averageSpend: data.revenue / data.count,
-      }))
-  }, [filteredAppointments])
 
   // Service price analysis - Live data
   const servicePriceAnalysis = useMemo(() => {
@@ -229,7 +258,7 @@ export function AnalyticsDashboard({
     }
 
     filteredAppointments.forEach((apt) => {
-      const price = apt.service_price
+      const price = servicePriceMap.get(apt.service_id) || 0
       let range = "Under $25"
 
       if (price >= 25 && price <= 50) range = "$25-$50"
@@ -252,28 +281,38 @@ export function AnalyticsDashboard({
   }, [filteredAppointments])
 
   // Monthly trend data - Live data
-  const monthlyTrend = useMemo(() => {
-    const monthMap = new Map<string, { revenue: number; appointments: number }>()
+const monthlyTrend = useMemo(() => {
+  const monthMap = new Map<string, { revenue: number; appointments: number }>()
 
-    filteredAppointments.forEach((apt) => {
-      const date = new Date(apt.appointment_date)
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
-      const current = monthMap.get(monthKey) || { revenue: 0, appointments: 0 }
+  // Build a quick lookup for service prices
+  const servicePriceMap = new Map<string, number>(
+    services.map(service => [service.id, Number(service.price)])
+  )
 
-      monthMap.set(monthKey, {
-        revenue: current.revenue + apt.service_price,
-        appointments: current.appointments + 1,
-      })
+  filteredAppointments.forEach((apt) => {
+    const date = new Date(apt.appointment_date)
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+    const current = monthMap.get(monthKey) || { revenue: 0, appointments: 0 }
+
+    const price = servicePriceMap.get(apt.service_id) || 0
+
+    monthMap.set(monthKey, {
+      revenue: current.revenue + price,
+      appointments: current.appointments + 1,
     })
+  })
 
-    return Array.from(monthMap.entries())
-      .map(([month, data]) => ({
-        month: new Date(month + "-01").toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-        revenue: data.revenue,
-        appointments: data.appointments,
-      }))
-      .sort((a, b) => new Date(a.month + " 1").getTime() - new Date(b.month + " 1").getTime())
-  }, [filteredAppointments])
+  return Array.from(monthMap.entries())
+    .map(([monthKey, data]) => ({
+      month: new Date(`${monthKey}-01`).toLocaleDateString("en-US", {
+        month: "short",
+        year: "numeric",
+      }),
+      revenue: data.revenue,
+      appointments: data.appointments,
+    }))
+    .sort((a, b) => new Date(`${a.month} 1`).getTime() - new Date(`${b.month} 1`).getTime())
+}, [filteredAppointments, services])
 
   // Calculate growth rate from live data
   const growthRate = useMemo(() => {
@@ -368,7 +407,7 @@ export function AnalyticsDashboard({
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalRevenue, language)}</div>
+            <div className="text-2xl font-bold">{totalRevenue}</div>
             <div className="flex items-center text-xs text-muted-foreground">
               {growthRate > 0 ? (
                 <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
@@ -434,7 +473,7 @@ export function AnalyticsDashboard({
                   <ChartTooltip
                     content={<ChartTooltipContent />}
                     formatter={(value, name) => [
-                      name === "revenue" ? formatCurrency(Number(value), language) : value,
+                      name === "revenue" ? Number(value) + "$ " : value,
                       name === "revenue" ? "Revenue" : "Appointments",
                     ]}
                   />
@@ -578,34 +617,35 @@ export function AnalyticsDashboard({
             <CardTitle>Service Performance Details</CardTitle>
             <CardDescription>Live comprehensive breakdown of service revenue and pricing</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {revenueByService
-                .sort((a, b) => b.revenue - a.revenue)
-                .map((service, index) => (
-                  <div
-                    key={service.fullServiceName}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Badge variant="outline">{index + 1}</Badge>
-                      <div>
-                        <p className="font-medium" title={service.fullServiceName}>
-                          {service.service}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {service.count} bookings • Base: {formatCurrency(service.basePrice, language)} • Avg:{" "}
-                          {formatCurrency(service.averagePrice, language)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold">{formatCurrency(service.revenue, language)}</p>
-                    </div>
-                  </div>
-                ))}
+<CardContent>
+  <div className="space-y-4">
+    {revenueByService
+      .sort((a, b) => b.revenue - a.revenue)
+      .map((service, index) => (
+        <div
+          key={service.fullServiceName}
+          className="flex items-center justify-between p-3 border rounded-lg"
+        >
+          <div className="flex items-center gap-3">
+            <Badge variant="outline">{index + 1}</Badge>
+            <div>
+              <p className="font-medium" title={service.fullServiceName}>
+                {service.service}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {service.count} bookings • Base: {formatCurrency(service.basePrice, language)} • Avg:{" "}
+                {formatCurrency(service.averagePrice, language)}
+              </p>
             </div>
-          </CardContent>
+          </div>
+          <div className="text-right">
+            <p className="font-bold">{formatCurrency(service.revenue, language)}</p>
+          </div>
+        </div>
+      ))}
+  </div>
+</CardContent>
+
         </Card>
 
         {/* Age Group Analysis - Live Data */}
