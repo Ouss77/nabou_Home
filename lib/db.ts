@@ -16,7 +16,6 @@ export interface User {
   city?: string
   profile_completed?: boolean
   email_verified?: boolean
-  password_hash?: string
 }
 
 export interface Store {
@@ -115,14 +114,6 @@ export class OutsideWorkingHoursError extends Error {
   }
 }
 
-// Custom error for trial limitations
-export class TrialLimitExceededError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = "TrialLimitExceededError"
-  }
-}
-
 // User functions
 export async function createUser(
   email: string,
@@ -157,16 +148,6 @@ export async function updateBarberStatus(barberId: string, status: "trial" | "ac
     RETURNING id, email, name, role, status, created_at
   `
   return result[0] || null
-}
-
-export async function getBarberAppointmentCount(barberId: string): Promise<number> {
-  const result = await sql`
-    SELECT COUNT(a.id) as appointment_count
-    FROM appointments a
-    JOIN stores s ON a.store_id = s.id
-    WHERE s.barber_id = ${barberId}
-  `
-  return Number.parseInt(result[0]?.appointment_count || "0")
 }
 
 export async function getAllStores() {

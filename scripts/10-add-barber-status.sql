@@ -1,6 +1,6 @@
--- Add status column to users table for barber trial management
+-- Add status column to users table for barber account management
 ALTER TABLE users 
-ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'trial' 
+ADD COLUMN status VARCHAR(20) DEFAULT 'trial' 
 CHECK (status IN ('trial', 'active', 'expired'));
 
 -- Update existing barbers to have trial status
@@ -8,8 +8,5 @@ UPDATE users
 SET status = 'trial' 
 WHERE role = 'barber' AND status IS NULL;
 
--- Admin users don't need status
-UPDATE users 
-SET status = NULL 
-WHERE role = 'admin';
-</merged_code>
+-- Create index for better performance on status queries
+CREATE INDEX idx_users_status ON users(status) WHERE role = 'barber';
