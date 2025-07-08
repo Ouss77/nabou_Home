@@ -14,50 +14,49 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ChevronDown, Check } from "lucide-react"
+import { ChevronDown, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface BarberStatusSelectorProps {
   barberId: string
   currentStatus: "trial" | "active" | "expired"
-  onStatusUpdate: (newStatus: "trial" | "active" | "expired") => void
+  onStatusChange: (newStatus: "trial" | "active" | "expired") => void
 }
 
-const statusConfig = {
-  trial: {
-    label: "Trial",
-    variant: "secondary" as const,
-    className: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
-  },
-  active: {
-    label: "Active",
-    variant: "default" as const,
-    className: "bg-green-100 text-green-800 hover:bg-green-200",
-  },
-  expired: {
-    label: "Expired",
-    variant: "destructive" as const,
-    className: "bg-red-100 text-red-800 hover:bg-red-200",
-  },
-}
-
-export function BarberStatusSelector({ barberId, currentStatus, onStatusUpdate }: BarberStatusSelectorProps) {
+export function BarberStatusSelector({ barberId, currentStatus, onStatusChange }: BarberStatusSelectorProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<"trial" | "active" | "expired" | null>(null)
   const { toast } = useToast()
 
-  const handleStatusChange = async (newStatus: "trial" | "active" | "expired") => {
+  const statusConfig = {
+    trial: {
+      label: "Trial",
+      variant: "secondary" as const,
+      className: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
+    },
+    active: {
+      label: "Active",
+      variant: "default" as const,
+      className: "bg-green-100 text-green-800 hover:bg-green-200",
+    },
+    expired: {
+      label: "Expired",
+      variant: "destructive" as const,
+      className: "bg-red-100 text-red-800 hover:bg-red-200",
+    },
+  }
+
+  const handleStatusSelect = (newStatus: "trial" | "active" | "expired") => {
     if (newStatus === currentStatus) return
 
     // Show confirmation for potentially destructive changes
     if (newStatus === "expired" || (currentStatus === "active" && newStatus === "trial")) {
       setPendingStatus(newStatus)
       setShowConfirmDialog(true)
-      return
+    } else {
+      updateStatus(newStatus)
     }
-
-    await updateStatus(newStatus)
   }
 
   const updateStatus = async (newStatus: "trial" | "active" | "expired") => {
@@ -65,28 +64,26 @@ export function BarberStatusSelector({ barberId, currentStatus, onStatusUpdate }
     try {
       const response = await fetch(`/api/admin/barbers/${barberId}/status`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error("Failed to update status")
+        throw new Error(data.error || "Failed to update status")
       }
 
-      const data = await response.json()
-      onStatusUpdate(newStatus)
-
+      onStatusChange(newStatus)
       toast({
         title: "Status Updated",
-        description: data.message || `Barber status updated to ${newStatus}`,
+        description: `Barber status changed to ${statusConfig[newStatus].label}`,
       })
     } catch (error) {
       console.error("Error updating status:", error)
       toast({
         title: "Error",
-        description: "Failed to update barber status. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to update status",
         variant: "destructive",
       })
     } finally {
@@ -96,47 +93,42 @@ export function BarberStatusSelector({ barberId, currentStatus, onStatusUpdate }
     }
   }
 
-  const confirmStatusChange = () => {
-    if (pendingStatus) {
-      updateStatus(pendingStatus)
-    }
-  }
-
   const getConfirmationMessage = () => {
     if (pendingStatus === "expired") {
-      return "This will block the barber from accessing their account. They won't be able to log in or manage appointments until reactivated."
+      return "This will block the barber from accessing their account. They will need to upgrade to continue using the service."
     }
     if (currentStatus === "active" && pendingStatus === "trial") {
-      return "This will downgrade the barber from active to trial status. They may lose access to premium features."
+      return "This will downgrade the barber from active to trial status. They may lose access if they exceed trial limits."
     }
-    return "Are you sure you want to change this barber's status?"
+    return `Are you sure you want to change the status to ${pendingStatus}?`
   }
 
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-auto p-0" disabled={isLoading}>
+          <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent" disabled={isLoading}>
             <Badge
               variant={statusConfig[currentStatus].variant}
               className={`${statusConfig[currentStatus].className} cursor-pointer hover:opacity-80`}
             >
+              {isLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
               {statusConfig[currentStatus].label}
-              <ChevronDown className="ml-1 h-3 w-3" />
+              <ChevronDown className="h-3 w-3 ml-1" />
             </Badge>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
+        <DropdownMenuContent align="end">
           {Object.entries(statusConfig).map(([status, config]) => (
             <DropdownMenuItem
               key={status}
-              onClick={() => handleStatusChange(status as "trial" | "active" | "expired")}
-              className="cursor-pointer"
+              onClick={() => handleStatusSelect(status as "trial" | "active" | "expired")}
+              className={currentStatus === status ? "bg-muted" : ""}
             >
-              <div className="flex items-center justify-between w-full">
-                <span>{config.label}</span>
-                {status === currentStatus && <Check className="h-4 w-4" />}
-              </div>
+              <Badge variant={config.variant} className={`${config.className} mr-2`}>
+                {config.label}
+              </Badge>
+              {currentStatus === status && "(Current)"}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
@@ -150,7 +142,12 @@ export function BarberStatusSelector({ barberId, currentStatus, onStatusUpdate }
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmStatusChange}>Confirm Change</AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => pendingStatus && updateStatus(pendingStatus)}
+              className={pendingStatus === "expired" ? "bg-red-600 hover:bg-red-700" : ""}
+            >
+              {pendingStatus === "expired" ? "Block Access" : "Confirm"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

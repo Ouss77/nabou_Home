@@ -150,6 +150,43 @@ export async function updateBarberStatus(barberId: string, status: "trial" | "ac
   return result[0] || null
 }
 
+// Get appointment count for a specific barber
+export async function getBarberAppointmentCount(barberId: string): Promise<number> {
+  const result = await sql`
+    SELECT COUNT(a.id) as appointment_count
+    FROM appointments a
+    JOIN stores s ON a.store_id = s.id
+    WHERE s.barber_id = ${barberId}
+  `
+  return Number(result[0]?.appointment_count || 0)
+}
+
+// Check and update barber status based on appointment count
+export async function checkAndUpdateBarberTrialStatus(barberId: string): Promise<User | null> {
+  const user = await sql`
+    SELECT id, email, name, role, status, created_at
+    FROM users
+    WHERE id = ${barberId} AND role = 'barber'
+  `
+
+  if (!user[0]) return null
+
+  const currentUser = user[0]
+
+  // Only check trial users
+  if (currentUser.status === "trial") {
+    const appointmentCount = await getBarberAppointmentCount(barberId)
+
+    // If they have more than 20 appointments, expire their trial
+    if (appointmentCount > 20) {
+      const updatedUser = await updateBarberStatus(barberId, "expired")
+      return updatedUser
+    }
+  }
+
+  return currentUser
+}
+
 export async function getAllStores() {
   const result = await sql` SELECT * FROM stores`
   return result
