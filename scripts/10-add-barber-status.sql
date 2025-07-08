@@ -1,9 +1,15 @@
 -- Add status column to users table for barber trial management
-ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'trial';
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'trial' 
+CHECK (status IN ('trial', 'active', 'expired'));
 
 -- Update existing barbers to have trial status
-UPDATE users SET status = 'trial' WHERE role = 'barber' AND status IS NULL;
+UPDATE users 
+SET status = 'trial' 
+WHERE role = 'barber' AND status IS NULL;
 
--- Add constraint to ensure valid status values
-ALTER TABLE users ADD CONSTRAINT check_user_status 
-CHECK (status IN ('trial', 'active', 'expired'));
+-- Admin users don't need status
+UPDATE users 
+SET status = NULL 
+WHERE role = 'admin';
+</merged_code>

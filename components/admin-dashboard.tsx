@@ -34,7 +34,7 @@ interface Appointment {
   notes: string | null
   created_at: string
   service_name?: string
-  service_price?: number
+  service_price?: string | number // Can be string from DB
   store_title?: string
   barber_name?: string
 }
@@ -80,15 +80,27 @@ export function AdminDashboard({ user, barbers: initialBarbers, appointments }: 
     setBarbers((prev) => prev.map((barber) => (barber.id === barberId ? { ...barber, status: newStatus } : barber)))
   }
 
+  // Helper function to safely convert price to number
+  const formatPrice = (price: string | number | undefined): string => {
+    if (price === undefined || price === null) return "0.00"
+    const numPrice = typeof price === "string" ? Number.parseFloat(price) : price
+    return isNaN(numPrice) ? "0.00" : numPrice.toFixed(2)
+  }
+
   const totalBarbers = barbers.length
   const activeBarbers = barbers.filter((b) => b.status === "active").length
   const trialBarbers = barbers.filter((b) => b.status === "trial").length
   const expiredBarbers = barbers.filter((b) => b.status === "expired").length
   const totalAppointments = appointments.length
   const completedAppointments = appointments.filter((a) => a.status === "completed").length
+
+  // Calculate total revenue with proper number conversion
   const totalRevenue = appointments
     .filter((a) => a.status === "completed")
-    .reduce((sum, a) => sum + (a.service_price || 0), 0)
+    .reduce((sum, a) => {
+      const price = typeof a.service_price === "string" ? Number.parseFloat(a.service_price) : a.service_price || 0
+      return sum + (isNaN(price) ? 0 : price)
+    }, 0)
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -264,7 +276,7 @@ export function AdminDashboard({ user, barbers: initialBarbers, appointments }: 
                           {appointment.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>${appointment.service_price?.toFixed(2) || "0.00"}</TableCell>
+                      <TableCell>${formatPrice(appointment.service_price)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
