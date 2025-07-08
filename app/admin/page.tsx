@@ -1,11 +1,17 @@
-import { requireAdmin } from "@/lib/auth"
-import { getAllBarbers, getAllAppointments } from "@/lib/db"
+import { redirect } from "next/navigation"
+import { getCurrentUser } from "@/lib/auth"
 import { AdminDashboard } from "@/components/admin-dashboard"
 
 export default async function AdminPage() {
-  const user = await requireAdmin()
-  const barbers = await getAllBarbers()
-  const appointments = await getAllAppointments()
+  const user = await getCurrentUser()
 
-  return <AdminDashboard user={user} barbers={barbers} appointments={appointments} />
+  if (!user) {
+    redirect("/login")
+  }
+
+  if (user.role !== "admin") {
+    redirect("/unauthorized")
+  }
+
+  return <AdminDashboard />
 }

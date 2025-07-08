@@ -10,39 +10,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
 
+    // Get user by email
     const user = await getUserByEmail(email)
 
     if (!user) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
+      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
-    // Check password - handle demo accounts and registered users
-    let validPassword = false
-
-    // Check demo accounts first
-    if (email === "admin@barbershop.com" && password === "admin123") {
-      validPassword = true
-    } else if (email === "john@barbershop.com" && password === "barber123") {
-      validPassword = true
-    } else {
-      // For registered users, compare with stored password
-      // Temporarily using plain text comparison
-      validPassword = user.password_hash === password
+    // Simple password check (in production, use proper hashing)
+    if (user.password_hash !== password && user.password_hash !== `hashed_${password}`) {
+      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
-    if (!validPassword) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
-    }
-
-    // For barbers, check trial status and appointment count
+    // For barbers, check and update trial status
     if (user.role === "barber") {
       const updatedUser = await checkAndUpdateBarberTrialStatus(user.id)
 
       if (!updatedUser) {
-        return NextResponse.json({ error: "User account not found" }, { status: 404 })
+        return NextResponse.json({ error: "User not found" }, { status: 404 })
       }
 
-      // Block access for expired barbers
+      // Check if barber can access the system
       if (updatedUser.status === "expired") {
         return NextResponse.json(
           {
@@ -57,36 +45,48 @@ export async function POST(request: NextRequest) {
       if (updatedUser.status !== "trial" && updatedUser.status !== "active") {
         return NextResponse.json(
           {
-            error: "Account access is restricted. Please contact support.",
-            code: "ACCESS_RESTRICTED",
+            error: "Account access restricted. Please contact support.",
+            code: "ACCESS_DENIED",
           },
           { status: 403 },
         )
       }
 
-      // Use the updated user data for session
+      // Use updated user data
       user.status = updatedUser.status
     }
 
-    const userSession = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      status: user.status,
-    }
-
+    // Set session cookie
     const cookieStore = await cookies()
-    cookieStore.set("user", JSON.stringify(userSession), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    })
+    cookieStore.set(
+      "session",
+      JSON.stringify({
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        status: user.status,
+      }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+      },
+    )
 
-    return NextResponse.json({ user: userSession })
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        status: user.status,
+      },
+    })
   } catch (error) {
     console.error("Login error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "Login failed" }, { status: 500 })
   }
 }

@@ -37,34 +37,39 @@ export function AdminDashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [showCreateBarber, setShowCreateBarber] = useState(false)
   const { toast } = useToast()
 
   const fetchData = async (showRefreshToast = false) => {
     try {
       setRefreshing(true)
+
       const [barbersRes, appointmentsRes] = await Promise.all([
         fetch("/api/admin/barbers"),
         fetch("/api/admin/appointments"),
       ])
 
-      if (barbersRes.ok && appointmentsRes.ok) {
-        const barbersData = await barbersRes.json()
-        const appointmentsData = await appointmentsRes.json()
-        setBarbers(barbersData)
-        setAppointments(appointmentsData)
+      if (!barbersRes.ok || !appointmentsRes.ok) {
+        throw new Error("Failed to fetch data")
+      }
 
-        if (showRefreshToast) {
-          toast({
-            title: "Data Refreshed",
-            description: "Dashboard data has been updated successfully.",
-          })
-        }
+      const barbersData = await barbersRes.json()
+      const appointmentsData = await appointmentsRes.json()
+
+      setBarbers(barbersData)
+      setAppointments(appointmentsData)
+
+      if (showRefreshToast) {
+        toast({
+          title: "Data Refreshed",
+          description: "Dashboard data has been updated successfully.",
+        })
       }
     } catch (error) {
       console.error("Error fetching data:", error)
       toast({
         title: "Error",
-        description: "Failed to fetch dashboard data",
+        description: "Failed to fetch dashboard data. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -79,6 +84,7 @@ export function AdminDashboard() {
 
   const handleBarberCreated = () => {
     fetchData()
+    setShowCreateBarber(false)
   }
 
   const handleStatusChange = (barberId: string, newStatus: "trial" | "active" | "expired") => {
@@ -104,7 +110,7 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -116,7 +122,7 @@ export function AdminDashboard() {
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          <CreateBarberDialog onBarberCreated={handleBarberCreated} />
+          <Button onClick={() => setShowCreateBarber(true)}>Add Barber</Button>
         </div>
       </div>
 
@@ -309,6 +315,8 @@ export function AdminDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <CreateBarberDialog open={showCreateBarber} onOpenChange={setShowCreateBarber} onSuccess={handleBarberCreated} />
     </div>
   )
 }
