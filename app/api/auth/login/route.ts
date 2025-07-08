@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getUserByEmail } from "@/lib/db"
+import { getUserByEmail, getBarberAppointmentCount } from "@/lib/db"
 import { cookies } from "next/headers"
 
 export async function POST(request: NextRequest) {
@@ -34,11 +34,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
+    // Check trial limitations for barbers
+    if (user.role === "barber") {
+      // Check if barber status is expired
+      if (user.status === "expired") {
+        return NextResponse.json(
+          {
+            error: "Your account has expired. Please contact support to reactivate your account.",
+          },
+          { status: 403 },
+        )
+      }
+
+      // Check appointment count for trial users
+      if (user.status === "trial") {
+        const appointmentCount = await getBarberAppointmentCount(user.id)
+
+        if (appointmentCount > 20) {
+          return NextResponse.json(
+            {
+              error: "Your free trial has ended. Please upgrade to continue using the service.",
+            },
+            { status: 403 },
+          )
+        }
+      }
+    }
+
     const userSession = {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
+      status: user.status,
     }
 
     const cookieStore = await cookies()

@@ -1,5 +1,5 @@
 import { neon } from "@neondatabase/serverless"
-import slugify from "slugify";
+import slugify from "slugify"
 
 // Create Neon SQL client
 const sql = neon(process.env.DATABASE_URL!)
@@ -10,11 +10,13 @@ export interface User {
   email: string
   name: string
   role: "admin" | "barber"
+  status?: "trial" | "active" | "expired"
   created_at: string
   phone?: string
   city?: string
   profile_completed?: boolean
   email_verified?: boolean
+  password_hash?: string
 }
 
 export interface Store {
@@ -113,6 +115,14 @@ export class OutsideWorkingHoursError extends Error {
   }
 }
 
+// Custom error for trial limitations
+export class TrialLimitExceededError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "TrialLimitExceededError"
+  }
+}
+
 // User functions
 export async function createUser(
   email: string,
@@ -123,20 +133,40 @@ export async function createUser(
   city?: string,
 ) {
   const result = await sql`
-    INSERT INTO users (email, password_hash, name, role, phone, city, profile_completed, email_verified)
-    VALUES (${email}, ${passwordHash}, ${name}, ${role}, ${phone || null}, ${city || null}, ${phone ? true : false}, true)
-    RETURNING id, email, name, role, phone, city, profile_completed, email_verified, created_at
+    INSERT INTO users (email, password_hash, name, role, phone, city, profile_completed, email_verified, status)
+    VALUES (${email}, ${passwordHash}, ${name}, ${role}, ${phone || null}, ${city || null}, ${phone ? true : false}, true, ${role === "barber" ? "trial" : null})
+    RETURNING id, email, name, role, phone, city, profile_completed, email_verified, status, created_at
   `
   return result[0]
 }
 
 export async function getUserByEmail(email: string) {
   const result = await sql`
-    SELECT id, email, password_hash, name, role, created_at
+    SELECT id, email, password_hash, name, role, status, created_at
     FROM users
     WHERE email = ${email}
   `
   return result[0] || null
+}
+
+export async function updateBarberStatus(barberId: string, status: "trial" | "active" | "expired") {
+  const result = await sql`
+    UPDATE users 
+    SET status = ${status}
+    WHERE id = ${barberId} AND role = 'barber'
+    RETURNING id, email, name, role, status, created_at
+  `
+  return result[0] || null
+}
+
+export async function getBarberAppointmentCount(barberId: string): Promise<number> {
+  const result = await sql`
+    SELECT COUNT(a.id) as appointment_count
+    FROM appointments a
+    JOIN stores s ON a.store_id = s.id
+    WHERE s.barber_id = ${barberId}
+  `
+  return Number.parseInt(result[0]?.appointment_count || "0")
 }
 
 export async function getAllStores() {
@@ -146,13 +176,13 @@ export async function getAllStores() {
 
 export async function getAllBarbers() {
   const result = await sql`
-    SELECT u.id, u.email, u.name, u.created_at,
+    SELECT u.id, u.email, u.name, u.status, u.created_at,
            COUNT(a.id) as appointment_count
     FROM users u
     LEFT JOIN stores s ON u.id = s.barber_id
     LEFT JOIN appointments a ON s.id = a.store_id
     WHERE u.role = 'barber'
-    GROUP BY u.id, u.email, u.name, u.created_at
+    GROUP BY u.id, u.email, u.name, u.status, u.created_at
     ORDER BY u.created_at DESC
   `
   return result
@@ -189,15 +219,15 @@ export async function createStore(
     lower: true,
     strict: true, // removes special chars
     trim: true,
-  });
+  })
 
   const result = await sql`
     INSERT INTO stores (barber_id, title, slug, address, description, image_url)
     VALUES (${barberId}, ${title}, ${slug}, ${address}, ${description}, ${imageUrl || null})
     RETURNING *
-  `;
+  `
 
-  return result[0];
+  return result[0]
 }
 
 export async function updateStore(
