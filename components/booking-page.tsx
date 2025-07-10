@@ -16,7 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
-  Images,
+  ImageIcon,
   Calendar,
   User,
   Mail,
@@ -26,7 +26,6 @@ import {
   XCircle,
   Timer,
 } from "lucide-react"
-import Image from "next/image"
 import { useLanguage } from "@/components/language-provider"
 import { LanguageSelector } from "@/components/language-selector"
 import { ImageGallery } from "@/components/image-gallery"
@@ -473,7 +472,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
             <Card className="overflow-hidden shadow-xl border-0 bg-white/80 backdrop-blur-sm">
               <CardContent className="p-0">
                 <div className="relative">
-                  <Image
+                  <ImageIcon
                     src={displayImage || "/placeholder.svg"}
                     alt={store.title}
                     width={500}
@@ -487,7 +486,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
                       className="absolute bottom-4 right-4 bg-black/70 hover:bg-black/80 text-white shadow-lg backdrop-blur-sm"
                       size="sm"
                     >
-                      <Images className="h-4 w-4 mr-2" />
+                      <ImageIcon className="h-4 w-4 mr-2" />
                       View Gallery ({storeImages.length})
                     </Button>
                   )}
@@ -651,7 +650,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
                               variant="outline"
                               size="sm"
                               onClick={navigateToPreviousMonth}
-                              className="hover:bg-slate-100"
+                              className="hover:bg-slate-100 bg-transparent"
                             >
                               <ChevronLeft className="h-4 w-4" />
                             </Button>
@@ -660,7 +659,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
                               variant="outline"
                               size="sm"
                               onClick={navigateToNextMonth}
-                              className="hover:bg-slate-100"
+                              className="hover:bg-slate-100 bg-transparent"
                             >
                               <ChevronRight className="h-4 w-4" />
                             </Button>
@@ -744,8 +743,9 @@ export function BookingPage({ store, services }: BookingPageProps) {
                               <div className="flex flex-col items-center gap-1">
                                 <span>{time}</span>
                                 <div className="flex">
-                                                                {isBooked && <XCircle className="h-3 w-3" />}
-                                {isPassed && <Timer className="h-3 w-3" />} </div>
+                                  {isBooked && <XCircle className="h-3 w-3" />}
+                                  {isPassed && <Timer className="h-3 w-3" />}
+                                </div>
 
                                 {!isDisabled && !isSelected && (
                                   <CheckCircle2 className="h-3 w-3 opacity-0 group-hover:opacity-100" />
