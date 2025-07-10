@@ -192,18 +192,21 @@ export function AdminDashboard({ user, barbers: initialBarbers, appointments }: 
                           <Badge variant="secondary">{barber.appointment_count}</Badge>
                         </TableCell>
 <TableCell>
-  <div className="flex items-center gap-2">
-    <select
-      value={barber.status}
-      onChange={(e) => handleStatusChange(barber.id, e.target.value as "trial" | "active" | "expired")}
-      className="border border-gray-300 rounded px-2 py-1 text-sm"
-    >
-      <option value="trial">Trial</option>
-      <option value="active">Active</option>
-      <option value="expired">Expired</option>
-    </select>
-    <StatusBadge status={barber.status} />
-  </div>
+<select
+  value={barber.status}
+  onChange={(e) => handleStatusChange(barber.id, e.target.value as "trial" | "active" | "expired")}
+  className={`
+    text-xs font-medium rounded px-2 py-1
+    ${barber.status === "trial" && "bg-yellow-100 text-yellow-800"}
+    ${barber.status === "active" && "bg-green-100 text-green-800"}
+    ${barber.status === "expired" && "bg-red-100 text-red-800"}
+  `}
+>
+  <option value="trial" className="bg-yellow-100 text-yellow-800">Trial</option>
+  <option value="active" className="bg-green-100 text-green-800">Active</option>
+  <option value="expired" className="bg-red-100 text-red-800">Expired</option>
+</select>
+
 </TableCell>
 
                         <TableCell>{new Date(barber.created_at).toLocaleDateString()}</TableCell>
