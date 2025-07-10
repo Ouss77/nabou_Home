@@ -150,6 +150,7 @@ export function AdminDashboard({ user, barbers, appointments }: AdminDashboardPr
                       <TableHead>{t.admin.name}</TableHead>
                       <TableHead>{t.auth.email}</TableHead>
                       <TableHead>{t.admin.appointments}</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>{t.admin.joined}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -161,6 +162,8 @@ export function AdminDashboard({ user, barbers, appointments }: AdminDashboardPr
                         <TableCell>
                           <Badge variant="secondary">{barber.appointment_count}</Badge>
                         </TableCell>
+                                                <TableCell>{barber.status}</TableCell>
+
                         <TableCell>{new Date(barber.created_at).toLocaleDateString()}</TableCell>
                       </TableRow>
                     ))}
