@@ -63,6 +63,7 @@ function StatusBadge({ status }: { status: "trial" | "active" | "expired" }) {
   )
 }
 export function AdminDashboard({ user, barbers: initialBarbers, appointments }: AdminDashboardProps) {
+
   const { t, language } = useLanguage()
   const [barbers, setBarbers] = useState(initialBarbers) // ← now barbers is reactive
   const [showCreateBarber, setShowCreateBarber] = useState(false)
