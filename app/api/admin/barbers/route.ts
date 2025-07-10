@@ -1,21 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server"
-import { getAllBarbers, createUser } from "@/lib/db"
+import { type NextRequest, NextResponse } from "next/server"
+import { createUser } from "@/lib/db"
 import { requireAdmin } from "@/lib/auth"
-
-export async function GET() {
-  try {
-    await requireAdmin()
-
-    const barbers = await getAllBarbers()
-    return NextResponse.json(barbers)
-  } catch (error) {
-    console.error("Error fetching barbers:", error)
-    if (error instanceof Error && error.message.includes("redirect")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    return NextResponse.json({ error: "Failed to fetch barbers" }, { status: 500 })
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,9 +24,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ barber })
   } catch (error) {
     console.error("Create barber error:", error)
-    if (error instanceof Error && error.message.includes("redirect")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
     return NextResponse.json({ error: "Failed to create barber" }, { status: 500 })
   }
 }

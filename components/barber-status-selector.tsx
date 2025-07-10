@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ChevronDown, Clock, UserCheck, UserX } from "lucide-react"
+import { ChevronDown, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface BarberStatusSelectorProps {
@@ -34,56 +34,56 @@ export function BarberStatusSelector({ barberId, currentStatus, onStatusChange }
       label: "Trial",
       variant: "secondary" as const,
       className: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
-      icon: Clock,
     },
     active: {
       label: "Active",
       variant: "default" as const,
       className: "bg-green-100 text-green-800 hover:bg-green-200",
-      icon: UserCheck,
     },
     expired: {
       label: "Expired",
       variant: "destructive" as const,
       className: "bg-red-100 text-red-800 hover:bg-red-200",
-      icon: UserX,
     },
   }
 
   const handleStatusSelect = (newStatus: "trial" | "active" | "expired") => {
     if (newStatus === currentStatus) return
 
-    setPendingStatus(newStatus)
-    setShowConfirmDialog(true)
+    // Show confirmation for potentially destructive changes
+    if (newStatus === "expired" || (currentStatus === "active" && newStatus === "trial")) {
+      setPendingStatus(newStatus)
+      setShowConfirmDialog(true)
+    } else {
+      updateStatus(newStatus)
+    }
   }
 
-  const confirmStatusChange = async () => {
-    if (!pendingStatus) return
-
+  const updateStatus = async (newStatus: "trial" | "active" | "expired") => {
     setIsLoading(true)
     try {
       const response = await fetch(`/api/admin/barbers/${barberId}/status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: pendingStatus }),
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error("Failed to update status")
+        throw new Error(data.error || "Failed to update status")
       }
 
-      onStatusChange(pendingStatus)
+      onStatusChange(newStatus)
       toast({
         title: "Status Updated",
-        description: `Barber status changed to ${statusConfig[pendingStatus].label}`,
+        description: `Barber status changed to ${statusConfig[newStatus].label}`,
       })
     } catch (error) {
       console.error("Error updating status:", error)
       toast({
         title: "Error",
-        description: "Failed to update barber status. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to update status",
         variant: "destructive",
       })
     } finally {
@@ -93,35 +93,44 @@ export function BarberStatusSelector({ barberId, currentStatus, onStatusChange }
     }
   }
 
-  const CurrentIcon = statusConfig[currentStatus].icon
+  const getConfirmationMessage = () => {
+    if (pendingStatus === "expired") {
+      return "This will block the barber from accessing their account. They will need to upgrade to continue using the service."
+    }
+    if (currentStatus === "active" && pendingStatus === "trial") {
+      return "This will downgrade the barber from active to trial status. They may lose access if they exceed trial limits."
+    }
+    return `Are you sure you want to change the status to ${pendingStatus}?`
+  }
 
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent" disabled={isLoading}>
-            <Badge className={`${statusConfig[currentStatus].className} cursor-pointer`}>
-              <CurrentIcon className="h-3 w-3 mr-1" />
+            <Badge
+              variant={statusConfig[currentStatus].variant}
+              className={`${statusConfig[currentStatus].className} cursor-pointer hover:opacity-80`}
+            >
+              {isLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
               {statusConfig[currentStatus].label}
               <ChevronDown className="h-3 w-3 ml-1" />
             </Badge>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          {Object.entries(statusConfig).map(([status, config]) => {
-            const Icon = config.icon
-            return (
-              <DropdownMenuItem
-                key={status}
-                onClick={() => handleStatusSelect(status as "trial" | "active" | "expired")}
-                className={currentStatus === status ? "bg-muted" : ""}
-              >
-                <Icon className="h-4 w-4 mr-2" />
+        <DropdownMenuContent align="end">
+          {Object.entries(statusConfig).map(([status, config]) => (
+            <DropdownMenuItem
+              key={status}
+              onClick={() => handleStatusSelect(status as "trial" | "active" | "expired")}
+              className={currentStatus === status ? "bg-muted" : ""}
+            >
+              <Badge variant={config.variant} className={`${config.className} mr-2`}>
                 {config.label}
-                {currentStatus === status && <span className="ml-auto text-xs">(Current)</span>}
-              </DropdownMenuItem>
-            )
-          })}
+              </Badge>
+              {currentStatus === status && "(Current)"}
+            </DropdownMenuItem>
+          ))}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -129,21 +138,15 @@ export function BarberStatusSelector({ barberId, currentStatus, onStatusChange }
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Status Change</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to change this barber's status from{" "}
-              <strong>{statusConfig[currentStatus].label}</strong> to{" "}
-              <strong>{pendingStatus ? statusConfig[pendingStatus].label : ""}</strong>?
-              {pendingStatus === "expired" && (
-                <span className="block mt-2 text-red-600">
-                  This will prevent the barber from logging in until their status is changed.
-                </span>
-              )}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{getConfirmationMessage()}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmStatusChange} disabled={isLoading}>
-              {isLoading ? "Updating..." : "Confirm"}
+            <AlertDialogAction
+              onClick={() => pendingStatus && updateStatus(pendingStatus)}
+              className={pendingStatus === "expired" ? "bg-red-600 hover:bg-red-700" : ""}
+            >
+              {pendingStatus === "expired" ? "Block Access" : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

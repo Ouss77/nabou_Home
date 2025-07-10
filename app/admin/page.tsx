@@ -1,8 +1,11 @@
 import { requireAdmin } from "@/lib/auth"
+import { getAllBarbers, getAllAppointments } from "@/lib/db"
 import { AdminDashboard } from "@/components/admin-dashboard"
 
 export default async function AdminPage() {
-  await requireAdmin()
+  const user = await requireAdmin()
+  const barbers = await getAllBarbers()
+  const appointments = await getAllAppointments()
 
-  return <AdminDashboard />
+  return <AdminDashboard user={user} barbers={barbers} appointments={appointments} />
 }

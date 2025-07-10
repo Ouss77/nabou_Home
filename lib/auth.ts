@@ -6,7 +6,6 @@ export interface User {
   email: string
   name: string
   role: "admin" | "barber"
-  status?: "trial" | "active" | "expired"
 }
 
 export async function getUser(): Promise<User | null> {
@@ -22,10 +21,6 @@ export async function getUser(): Promise<User | null> {
   } catch {
     return null
   }
-}
-
-export async function getCurrentUser(): Promise<User | null> {
-  return await getUser()
 }
 
 export async function requireAuth(role?: "admin" | "barber") {
