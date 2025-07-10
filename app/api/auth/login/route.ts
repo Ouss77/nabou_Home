@@ -10,83 +10,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
 
-    // Get user by email
+    // Get user from database
     const user = await getUserByEmail(email)
 
     if (!user) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
-    // Simple password check (in production, use proper hashing)
-    if (user.password_hash !== password && user.password_hash !== `hashed_${password}`) {
+    // Simple password verification (in production, use bcrypt)
+    const isValidPassword = user.password_hash === `hashed_${password}` || user.password_hash === password
+
+    if (!isValidPassword) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
-    // For barbers, check and update trial status
+    // For barbers, check trial status and appointment limits
     if (user.role === "barber") {
-      const updatedUser = await checkAndUpdateBarberTrialStatus(user.id)
+      try {
+        const currentStatus = await checkAndUpdateBarberTrialStatus(user.id)
 
-      if (!updatedUser) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 })
+        // Block access for expired barbers
+        if (currentStatus === "expired") {
+          return NextResponse.json(
+            {
+              error: "Your free trial has ended. Please upgrade to continue using the service.",
+              trialExpired: true,
+            },
+            { status: 403 },
+          )
+        }
+
+        // Update user object with current status
+        user.status = currentStatus
+      } catch (error) {
+        console.error("Error checking trial status:", error)
+        // Allow login but log the error
       }
-
-      // Check if barber can access the system
-      if (updatedUser.status === "expired") {
-        return NextResponse.json(
-          {
-            error: "Your free trial has ended. Please upgrade to continue using the service.",
-            code: "TRIAL_EXPIRED",
-          },
-          { status: 403 },
-        )
-      }
-
-      // Only allow trial and active barbers to login
-      if (updatedUser.status !== "trial" && updatedUser.status !== "active") {
-        return NextResponse.json(
-          {
-            error: "Account access restricted. Please contact support.",
-            code: "ACCESS_DENIED",
-          },
-          { status: 403 },
-        )
-      }
-
-      // Use updated user data
-      user.status = updatedUser.status
     }
 
-    // Set session cookie
+    // Create session cookie
     const cookieStore = await cookies()
-    cookieStore.set(
-      "session",
-      JSON.stringify({
-        userId: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        status: user.status,
-      }),
-      {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-      },
-    )
+    const userSession = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      status: user.status,
+    }
+
+    cookieStore.set("user", JSON.stringify(userSession), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    })
 
     return NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        status: user.status,
-      },
+      user: userSession,
+      message: "Login successful",
     })
   } catch (error) {
     console.error("Login error:", error)
-    return NextResponse.json({ error: "Login failed" }, { status: 500 })
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

@@ -32,17 +32,20 @@ export function BarberStatusSelector({ barberId, currentStatus, onStatusChange }
   const statusConfig = {
     trial: {
       label: "Trial",
-      color: "bg-yellow-100 text-yellow-800 border-yellow-300",
+      variant: "secondary" as const,
+      className: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
       icon: Clock,
     },
     active: {
       label: "Active",
-      color: "bg-green-100 text-green-800 border-green-300",
+      variant: "default" as const,
+      className: "bg-green-100 text-green-800 hover:bg-green-200",
       icon: UserCheck,
     },
     expired: {
       label: "Expired",
-      color: "bg-red-100 text-red-800 border-red-300",
+      variant: "destructive" as const,
+      className: "bg-red-100 text-red-800 hover:bg-red-200",
       icon: UserX,
     },
   }
@@ -60,7 +63,7 @@ export function BarberStatusSelector({ barberId, currentStatus, onStatusChange }
     setIsLoading(true)
     try {
       const response = await fetch(`/api/admin/barbers/${barberId}/status`, {
-        method: "PATCH",
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
@@ -71,12 +74,10 @@ export function BarberStatusSelector({ barberId, currentStatus, onStatusChange }
         throw new Error("Failed to update status")
       }
 
-      const result = await response.json()
-
       onStatusChange(pendingStatus)
       toast({
         title: "Status Updated",
-        description: result.message || `Barber status updated to ${pendingStatus}`,
+        description: `Barber status changed to ${statusConfig[pendingStatus].label}`,
       })
     } catch (error) {
       console.error("Error updating status:", error)
@@ -98,11 +99,8 @@ export function BarberStatusSelector({ barberId, currentStatus, onStatusChange }
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
-            <Badge
-              variant="outline"
-              className={`${statusConfig[currentStatus].color} cursor-pointer hover:opacity-80 transition-opacity`}
-            >
+          <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent" disabled={isLoading}>
+            <Badge className={`${statusConfig[currentStatus].className} cursor-pointer`}>
               <CurrentIcon className="h-3 w-3 mr-1" />
               {statusConfig[currentStatus].label}
               <ChevronDown className="h-3 w-3 ml-1" />
@@ -120,7 +118,7 @@ export function BarberStatusSelector({ barberId, currentStatus, onStatusChange }
               >
                 <Icon className="h-4 w-4 mr-2" />
                 {config.label}
-                {currentStatus === status && <span className="ml-auto text-xs text-muted-foreground">Current</span>}
+                {currentStatus === status && <span className="ml-auto text-xs">(Current)</span>}
               </DropdownMenuItem>
             )
           })}
@@ -132,22 +130,18 @@ export function BarberStatusSelector({ barberId, currentStatus, onStatusChange }
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Status Change</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to change this barber's status to{" "}
-              <strong>{pendingStatus && statusConfig[pendingStatus].label}</strong>?
+              Are you sure you want to change this barber's status from{" "}
+              <strong>{statusConfig[currentStatus].label}</strong> to{" "}
+              <strong>{pendingStatus ? statusConfig[pendingStatus].label : ""}</strong>?
               {pendingStatus === "expired" && (
                 <span className="block mt-2 text-red-600">
-                  This will prevent the barber from accessing their account.
-                </span>
-              )}
-              {pendingStatus === "active" && (
-                <span className="block mt-2 text-green-600">
-                  This will give the barber full access to all features.
+                  This will prevent the barber from logging in until their status is changed.
                 </span>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmStatusChange} disabled={isLoading}>
               {isLoading ? "Updating..." : "Confirm"}
             </AlertDialogAction>
