@@ -1,908 +1,602 @@
 "use client"
+
 import type React from "react"
-import { useState, useEffect, useCallback, useRef } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import {
-  Scissors,
-  MapPin,
-  Clock,
-  Loader2,
-  ChevronLeft,
-  ChevronRight,
-  AlertTriangle,
-  ImageIcon,
-  Calendar,
-  User,
-  Mail,
-  Phone,
-  MessageSquare,
-  CheckCircle2,
-  XCircle,
-  Timer,
-} from "lucide-react"
-import { useLanguage } from "@/components/language-provider"
-import { LanguageSelector } from "@/components/language-selector"
-import { ImageGallery } from "@/components/image-gallery"
-import { formatCurrency } from "@/lib/currency-utils"
-import {
-  isToday,
-  formatDateForDisplay,
-  getCurrentDateString,
-  getPassedTimeSlots,
-  isDateInPast,
-  getTimezoneName,
-  isDateTimePast,
-  compareDateStrings,
-  isTomorrow,
-  formatDateToString,
-  debugDateInfo,
-} from "@/lib/time-utils"
+import { Clock, MapPin, ImageIcon, ArrowLeft, Check, AlertCircle, X } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import Link from "next/link"
 
 interface Store {
   id: string
   title: string
   address: string
-  description: string
-  image_url: string
+  description: string | null
+  slug: string
+  barber_name: string
 }
 
 interface Service {
   id: string
   name: string
-  description: string
+  description: string | null
   price: number
   duration_minutes: number
 }
 
 interface StoreImage {
   id: string
-  store_id: string
   image_data: string
   image_name: string
-  image_type: string
-  image_size: number
   is_primary: boolean
-  created_at: string
 }
 
 interface BookingPageProps {
-  store: Store
-  services: Service[]
+  storeSlug: string
 }
 
-export function BookingPage({ store, services }: BookingPageProps) {
-  const { t, language } = useLanguage()
-  const [selectedService, setSelectedService] = useState<Service | null>(null)
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
-  const [selectedTime, setSelectedTime] = useState("")
-  const [clientName, setClientName] = useState("")
-  const [age, setAge] = useState("")
-  const [clientEmail, setClientEmail] = useState("")
-  const [clientPhone, setClientPhone] = useState("")
-  const [notes, setNotes] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState("")
-  const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [bookedTimes, setBookedTimes] = useState<string[]>([])
-  const [passedTimes, setPassedTimes] = useState<string[]>([])
-  const [fetchingSlots, setFetchingSlots] = useState(false)
-  const [currentTime, setCurrentTime] = useState(new Date())
+export default function BookingPage({ storeSlug }: BookingPageProps) {
+  const { toast } = useToast()
+  const [store, setStore] = useState<Store | null>(null)
+  const [services, setServices] = useState<Service[]>([])
   const [storeImages, setStoreImages] = useState<StoreImage[]>([])
-  const [showGallery, setShowGallery] = useState(false)
-  const [loadingImages, setLoadingImages] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedService, setSelectedService] = useState<Service | null>(null)
+  const [selectedDate, setSelectedDate] = useState("")
+  const [selectedTime, setSelectedTime] = useState("")
+  const [availableSlots, setAvailableSlots] = useState<string[]>([])
+  const [bookedSlots, setBookedSlots] = useState<string[]>([])
+  const [showImageGallery, setShowImageGallery] = useState(false)
+  const [bookingForm, setBookingForm] = useState({
+    clientName: "",
+    clientEmail: "",
+    clientPhone: "",
+    age: "",
+    notes: "",
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const prevSelectedDateRef = useRef<Date | null>(null)
-  const lastFetchTimeRef = useRef<number>(0)
-
-  // Static time slots - moved outside to prevent recreation
-  const timeSlots = [
-    "09:00",
-    "09:30",
-    "10:00",
-    "10:30",
-    "11:00",
-    "11:30",
-    "12:00",
-    "12:30",
-    "13:00",
-    "13:30",
-    "14:00",
-    "14:30",
-    "15:00",
-    "15:30",
-    "16:00",
-    "16:30",
-    "17:00",
-    "17:30",
-    "18:00",
-    "18:30",
-    "19:00",
-    "19:30",
-    "20:00",
-  ]
-
-  // Fetch store images
-  useEffect(() => {
-    fetchStoreImages()
-  }, [store.id])
-
-  const fetchStoreImages = async () => {
-    setLoadingImages(true)
-    try {
-      const response = await fetch(`/api/stores/${store.id}/images`)
-      const data = await response.json()
-      if (response.ok) {
-        setStoreImages(data.images || [])
+  // Generate time slots (9 AM to 8 PM, 30-minute intervals)
+  const generateTimeSlots = () => {
+    const slots = []
+    for (let hour = 9; hour <= 20; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const timeString = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
+        slots.push(timeString)
       }
-    } catch (error) {
-      console.error("Failed to fetch store images:", error)
-    } finally {
-      setLoadingImages(false)
     }
+    return slots
   }
 
-  // Update current time every minute
+  const allTimeSlots = generateTimeSlots()
+
   useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 60000)
-    return () => clearInterval(interval)
-  }, [])
+    fetchStoreData()
+  }, [storeSlug])
 
-  // Memoized function to fetch booked times
-  const fetchBookedTimes = useCallback(async () => {
-    if (!selectedDate || !store.id) {
-      setBookedTimes([])
-      return
+  useEffect(() => {
+    if (selectedDate && store) {
+      fetchAvailableSlots()
     }
+  }, [selectedDate, store])
 
-    const now = Date.now()
-    if (now - lastFetchTimeRef.current < 1000) {
-      return
-    }
-    lastFetchTimeRef.current = now
-
-    setFetchingSlots(true)
+  const fetchStoreData = async () => {
     try {
-      const dateString = formatDateToString(selectedDate)
+      setLoading(true)
+      setError(null)
 
-      if (process.env.NODE_ENV === "development") {
-        console.log("[FetchBookedTimes] Fetching for date:", dateString)
-      }
-
-      const params = new URLSearchParams({
-        storeId: store.id,
-        date: dateString,
-        timezone: getTimezoneName(),
-        clientTime: currentTime.toISOString(),
-      })
-
-      const response = await fetch(`/api/bookings/available-slots?${params}`)
-      const data = await response.json()
-
-      if (response.ok) {
-        setBookedTimes(data.bookedTimes || [])
-      } else {
-        console.error("[FetchBookedTimes] Failed to fetch booked times:", data.error)
-        setBookedTimes([])
-      }
-    } catch (err) {
-      console.error("[FetchBookedTimes] Error fetching booked times:", err)
-      setBookedTimes([])
-    } finally {
-      setFetchingSlots(false)
-    }
-  }, [selectedDate, store.id, currentTime])
-
-  // Centralized effect to calculate and set passedTimes
-  useEffect(() => {
-    if (!selectedDate) {
-      setPassedTimes([])
-      return
-    }
-
-    const dateString = formatDateToString(selectedDate)
-    const todayString = getCurrentDateString()
-    const comparison = compareDateStrings(dateString, todayString)
-
-    // Debug logging to help troubleshoot
-    if (process.env.NODE_ENV === "development") {
-      console.log("[PassedTimesEffect] Date comparison:", {
-        selectedDate: dateString,
-        today: todayString,
-        comparison,
-        isToday: comparison === 0,
-        isFuture: comparison > 0,
-        isPast: comparison < 0,
-      })
-    }
-
-    let newPassedTimes: string[] = []
-    if (comparison > 0) {
-      // Future date (including tomorrow)
-      newPassedTimes = []
-    } else if (comparison < 0) {
-      // Past date
-      newPassedTimes = [...timeSlots]
-    } else {
-      // Today
-      newPassedTimes = getPassedTimeSlots(dateString, timeSlots)
-    }
-
-    setPassedTimes(newPassedTimes)
-  }, [selectedDate, currentTime]) // Removed timeSlots from dependencies
-
-  // Effect to clear selectedTime if it becomes passed
-  useEffect(() => {
-    if (selectedTime && passedTimes.includes(selectedTime)) {
-      setSelectedTime("")
-    }
-  }, [selectedTime, passedTimes])
-
-  // Effect to clear selectedTime if it becomes booked
-  useEffect(() => {
-    if (selectedTime && bookedTimes.includes(selectedTime)) {
-      setSelectedTime("")
-    }
-  }, [selectedTime, bookedTimes])
-
-  // Effect for when selectedDate changes
-  useEffect(() => {
-    const hasDateChanged = prevSelectedDateRef.current?.getTime() !== selectedDate?.getTime()
-
-    if (hasDateChanged || !prevSelectedDateRef.current) {
-      if (process.env.NODE_ENV === "development") {
-        debugDateInfo(selectedDate)
-      }
-
-      prevSelectedDateRef.current = selectedDate
-      setSelectedTime("") // Clear selected time when date changes
-      fetchBookedTimes()
-    }
-  }, [selectedDate, fetchBookedTimes])
-
-  const handleBooking = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!selectedService || !selectedDate || !selectedTime) {
-      setError(t.booking.selectService)
-      return
-    }
-
-    const dateString = formatDateToString(selectedDate)
-
-    // Client-side validation for past appointments
-    if (isDateTimePast(dateString, selectedTime)) {
-      setError(t.booking.pastTimeError)
-      return
-    }
-
-    // Re-check if selected time is booked or passed
-    if (bookedTimes.includes(selectedTime)) {
-      setError(t.booking.noLongerAvailable)
-      fetchBookedTimes()
-      return
-    }
-    if (passedTimes.includes(selectedTime)) {
-      setError(t.booking.alreadyPassed)
-      return
-    }
-
-    setLoading(true)
-    setError("")
-
-    try {
-      const response = await fetch("/api/bookings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          storeId: store.id,
-          serviceId: selectedService.id,
-          clientName,
-          clientEmail,
-          clientPhone,
-          appointmentDate: dateString,
-          appointmentTime: selectedTime,
-          notes,
-          age,
-          clientTimezone: getTimezoneName(),
-          clientDateTime: new Date().toISOString(),
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        if (response.status === 409 || (data.error && data.error.toLowerCase().includes("booked"))) {
-          setError(data.error || t.booking.justBooked)
-          fetchBookedTimes()
-        } else if (response.status === 400 && data.error && data.error.toLowerCase().includes("past")) {
-          setError(data.error || t.booking.cannotBookPast)
-          fetchBookedTimes()
-        } else {
-          throw new Error(data.error || t.booking.failedToBook)
+      // Fetch store data
+      const storeResponse = await fetch(`/api/stores/${storeSlug}`)
+      if (!storeResponse.ok) {
+        if (storeResponse.status === 404) {
+          setError("Store not found. Please check the URL or contact support.")
+          return
         }
-        return
+        throw new Error("Failed to fetch store data")
       }
 
-      setSuccess(true)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t.booking.failedToBook)
+      const storeData = await storeResponse.json()
+      setStore(storeData)
+
+      // Fetch services
+      const servicesResponse = await fetch(`/api/stores/${storeData.id}/services`)
+      if (servicesResponse.ok) {
+        const servicesData = await servicesResponse.json()
+        setServices(servicesData)
+      }
+
+      // Fetch store images
+      const imagesResponse = await fetch(`/api/stores/${storeData.id}/images`)
+      if (imagesResponse.ok) {
+        const imagesData = await imagesResponse.json()
+        setStoreImages(imagesData)
+      }
+    } catch (error) {
+      console.error("Error fetching store data:", error)
+      setError("Unable to load store information. Please try again later.")
     } finally {
       setLoading(false)
     }
   }
 
-  // Fixed calendar navigation functions
-  const navigateToPreviousMonth = () => {
-    setCurrentMonth((prevMonth) => {
-      const newMonth = new Date(prevMonth)
-      newMonth.setMonth(newMonth.getMonth() - 1)
-      return newMonth
-    })
-  }
+  const fetchAvailableSlots = async () => {
+    if (!store || !selectedDate) return
 
-  const navigateToNextMonth = () => {
-    setCurrentMonth((prevMonth) => {
-      const newMonth = new Date(prevMonth)
-      newMonth.setMonth(newMonth.getMonth() + 1)
-      return newMonth
-    })
-  }
-
-  const getDaysInMonth = (monthDate: Date) => {
-    const year = monthDate.getFullYear()
-    const month = monthDate.getMonth()
-    const firstDayOfMonth = new Date(year, month, 1)
-    const lastDayOfMonth = new Date(year, month + 1, 0)
-    const daysInMonthCount = lastDayOfMonth.getDate()
-    const startingDayOfWeek = firstDayOfMonth.getDay()
-
-    const daysArray = []
-
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      daysArray.push(null)
-    }
-
-    for (let day = 1; day <= daysInMonthCount; day++) {
-      const currentDateObj = new Date(year, month, day)
-      if (!isDateInPast(currentDateObj)) {
-        daysArray.push(currentDateObj)
-      } else {
-        daysArray.push(null)
+    try {
+      const response = await fetch(`/api/bookings/available-slots?storeId=${store.id}&date=${selectedDate}`)
+      if (response.ok) {
+        const data = await response.json()
+        setBookedSlots(data.bookedSlots || [])
+        setAvailableSlots(allTimeSlots.filter((slot) => !data.bookedSlots?.includes(slot)))
       }
+    } catch (error) {
+      console.error("Error fetching available slots:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load available time slots.",
+        variant: "destructive",
+      })
     }
-    return daysArray
   }
 
-  const days = getDaysInMonth(currentMonth)
+  const handleBooking = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedService || !selectedDate || !selectedTime || !store) return
 
-  // Get primary image or fallback
-  const primaryImage = storeImages.find((img) => img.is_primary) || storeImages[0]
-  const displayImage = primaryImage
-    ? `data:${primaryImage.image_type};base64,${primaryImage.image_data}`
-    : store.image_url || "/placeholder.svg?height=300&width=500"
+    setIsSubmitting(true)
 
-  if (success) {
+    try {
+      const response = await fetch("/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          storeId: store.id,
+          serviceId: selectedService.id,
+          clientName: bookingForm.clientName,
+          clientEmail: bookingForm.clientEmail,
+          clientPhone: bookingForm.clientPhone,
+          appointmentDate: selectedDate,
+          appointmentTime: selectedTime,
+          notes: bookingForm.notes,
+          age: bookingForm.age ? Number.parseInt(bookingForm.age) : null,
+        }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Booking Confirmed!",
+          description: "Your appointment has been successfully booked. You'll receive a confirmation email shortly.",
+        })
+
+        // Reset form
+        setBookingForm({
+          clientName: "",
+          clientEmail: "",
+          clientPhone: "",
+          age: "",
+          notes: "",
+        })
+        setSelectedService(null)
+        setSelectedDate("")
+        setSelectedTime("")
+
+        // Refresh available slots
+        fetchAvailableSlots()
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to book appointment")
+      }
+    } catch (error) {
+      console.error("Error booking appointment:", error)
+      toast({
+        title: "Booking Failed",
+        description: error instanceof Error ? error.message : "Failed to book appointment. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(price)
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+  }
+
+  const formatTime = (timeString: string) => {
+    const [hours, minutes] = timeString.split(":")
+    const hour = Number.parseInt(hours)
+    const ampm = hour >= 12 ? "PM" : "AM"
+    const displayHour = hour % 12 || 12
+    return `${displayHour}:${minutes} ${ampm}`
+  }
+
+  const getTomorrowDate = () => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    return tomorrow.toISOString().split("T")[0]
+  }
+
+  const getMaxDate = () => {
+    const maxDate = new Date()
+    maxDate.setDate(maxDate.getDate() + 30) // Allow booking up to 30 days in advance
+    return maxDate.toISOString().split("T")[0]
+  }
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-blue-50 flex items-center justify-center p-4">
-        <Card className="max-w-lg w-full shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader className="text-center pb-6">
-            <div className="mx-auto w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center mb-6 shadow-lg">
-              <CheckCircle2 className="h-10 w-10 text-white" />
-            </div>
-            <CardTitle className="text-2xl font-bold text-emerald-800 mb-2">{t.booking.bookingConfirmed}</CardTitle>
-            <CardDescription className="text-slate-600 text-base">{t.booking.confirmationEmail}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-xl p-6 space-y-4">
-              <div className="flex items-center justify-between py-2 border-b border-emerald-100">
-                <span className="text-slate-600 font-medium">{t.booking.service}:</span>
-                <span className="font-semibold text-slate-800">{selectedService?.name}</span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-emerald-100">
-                <span className="text-slate-600 font-medium">{t.booking.date}:</span>
-                <span className="font-semibold text-slate-800">
-                  {selectedDate ? formatDateForDisplay(selectedDate) : ""}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-emerald-100">
-                <span className="text-slate-600 font-medium">{t.booking.time}:</span>
-                <span className="font-semibold text-slate-800">{selectedTime}</span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-emerald-100">
-                <span className="text-slate-600 font-medium">{t.booking.duration}:</span>
-                <span className="font-semibold text-slate-800">
-                  {selectedService?.duration_minutes} {t.booking.minutes}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-slate-600 font-medium">{t.booking.price}:</span>
-                <span className="font-bold text-lg text-emerald-600">
-                  {formatCurrency(selectedService?.price || 0, language)}
-                </span>
-              </div>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-slate-500 mb-4">
-                We'll send you a confirmation email with all the details shortly.
-              </p>
-              <Button onClick={() => window.location.reload()} variant="outline" className="w-full">
-                Book Another Appointment
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading store information...</p>
+        </div>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      {/* Enhanced Header */}
-      <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-gradient-to-br from-slate-800 to-slate-600 rounded-xl shadow-lg">
-                <Scissors className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-slate-800 mb-1">{store.title}</h1>
-                <div className="flex items-center gap-2 text-slate-600">
-                  <MapPin className="h-4 w-4" />
-                  <span className="text-sm">{store.address}</span>
-                </div>
-              </div>
-            </div>
-            <LanguageSelector />
-          </div>
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Store Not Found</h1>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <Link href="/">
+            <Button className="bg-blue-600 hover:bg-blue-700">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Home
+            </Button>
+          </Link>
         </div>
-      </header>
+      </div>
+    )
+  }
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Store Information Section */}
-          <div className="space-y-6">
-            <Card className="overflow-hidden shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-              <CardContent className="p-0">
-                <div className="relative">
-                  <ImageIcon
-                    src={displayImage || "/placeholder.svg"}
-                    alt={store.title}
-                    width={500}
-                    height={300}
-                    className="w-full h-72 object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                  {storeImages.length > 1 && (
-                    <Button
-                      onClick={() => setShowGallery(true)}
-                      className="absolute bottom-4 right-4 bg-black/70 hover:bg-black/80 text-white shadow-lg backdrop-blur-sm"
-                      size="sm"
-                    >
-                      <ImageIcon className="h-4 w-4 mr-2" />
-                      View Gallery ({storeImages.length})
-                    </Button>
-                  )}
-                </div>
-                <div className="p-6">
-                  <h2 className="text-2xl font-bold mb-3 text-slate-800">
-                    {t.booking.about} {store.title}
-                  </h2>
-                  <p className="text-slate-600 leading-relaxed">{store.description}</p>
-                </div>
-              </CardContent>
-            </Card>
+  if (!store) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Store not found</p>
+          <Link href="/" className="text-blue-600 hover:underline mt-2 inline-block">
+            Return to homepage
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
-            {/* Enhanced Services Section */}
-            <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                  <Scissors className="h-6 w-6 text-slate-600" />
-                  {t.booking.ourServices}
-                </CardTitle>
-                <CardDescription className="text-slate-600">Choose the perfect service for your needs</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {services.map((service) => (
-                    <div
-                      key={service.id}
-                      className={`group p-5 border-2 rounded-xl cursor-pointer transition-all duration-300 hover:shadow-lg ${
-                        selectedService?.id === service.id
-                          ? "border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md"
-                          : "border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50"
-                      }`}
-                      onClick={() => setSelectedService(service)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="font-semibold text-lg text-slate-800">{service.name}</h3>
-                            {selectedService?.id === service.id && <CheckCircle2 className="h-5 w-5 text-blue-500" />}
-                          </div>
-                          <p className="text-slate-600 mb-3 leading-relaxed">{service.description}</p>
-                          <div className="flex items-center gap-4 text-sm">
-                            <div className="flex items-center gap-2 text-slate-500">
-                              <Clock className="h-4 w-4" />
-                              <span>
-                                {service.duration_minutes} {t.common.min}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-slate-800">
-                              {formatCurrency(service.price, language)}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+  const primaryImage = storeImages.find((img) => img.is_primary) || storeImages[0]
 
-          {/* Enhanced Booking Form */}
-          <div>
-            <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm sticky top-24">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                  <Calendar className="h-6 w-6 text-slate-600" />
-                  {t.booking.bookAppointment}
-                </CardTitle>
-                <CardDescription className="text-slate-600">{t.booking.selectPreferred}</CardDescription>
-                {selectedDate && isToday(selectedDate) && (
-                  <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex items-center gap-2 text-blue-800 text-sm">
-                      <Timer className="h-4 w-4" />
-                      <span className="font-medium">
-                        {t.booking.currentTime}:{" "}
-                        {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} (
-                        {getTimezoneName()})
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </CardHeader>
-
-              {/* Enhanced Date Selection Display */}
-              {selectedDate && (
-                <div className="px-6 pb-4">
-                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-5 w-5 text-blue-600" />
-                        <div>
-                          <span className="text-sm font-medium text-blue-800">Selected Date</span>
-                          <div className="font-bold text-blue-900">{formatDateForDisplay(selectedDate)}</div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {isToday(selectedDate) ? (
-                          <Badge className="bg-blue-100 text-blue-800 border-blue-200">{t.booking.today}</Badge>
-                        ) : isTomorrow(formatDateToString(selectedDate)) ? (
-                          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
-                            {t.booking.tomorrow}
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-slate-100 text-slate-800 border-slate-200">{t.booking.futureDate}</Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <CardContent className="pt-2">
-                <form onSubmit={handleBooking} className="space-y-6">
-                  {error && (
-                    <Alert variant="destructive" className="border-red-200 bg-red-50">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription className="text-red-800">{error}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  {/* Enhanced Service Selection Display */}
-                  {selectedService && (
-                    <div className="p-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl border border-emerald-200">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                          <div>
-                            <h4 className="font-semibold text-emerald-900">{selectedService.name}</h4>
-                            <p className="text-sm text-emerald-700">
-                              {selectedService.duration_minutes} {t.booking.minutes}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-lg px-3 py-1">
-                          {formatCurrency(selectedService.price, language)}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Enhanced Calendar */}
-                  <div className="space-y-3">
-                    <Label className="text-base font-semibold text-slate-700 flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      {t.booking.selectDate}
-                    </Label>
-                    <Card className="border-slate-200">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-semibold text-lg text-slate-800">
-                            {t.calendar.months[currentMonth.getMonth()]} {currentMonth.getFullYear()}
-                          </h3>
-                          <div className="flex gap-1">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={navigateToPreviousMonth}
-                              className="hover:bg-slate-100 bg-transparent"
-                            >
-                              <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={navigateToNextMonth}
-                              className="hover:bg-slate-100 bg-transparent"
-                            >
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="grid grid-cols-7 gap-1 mb-3">
-                          {t.calendar.days.map((day) => (
-                            <div
-                              key={day}
-                              className="p-2 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide"
-                            >
-                              {day}
-                            </div>
-                          ))}
-                        </div>
-                        <div className="grid grid-cols-7 gap-1">
-                          {days.map((day, index) => (
-                            <div key={index} className="aspect-square">
-                              {day && (
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedDate(day)}
-                                  className={`w-full h-full text-sm rounded-lg transition-all duration-200 font-medium ${
-                                    selectedDate && day.toDateString() === selectedDate.toDateString()
-                                      ? "bg-blue-500 text-white shadow-lg scale-105"
-                                      : "hover:bg-slate-100 text-slate-700 hover:scale-105"
-                                  }`}
-                                >
-                                  {day.getDate()}
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Enhanced Time Slot Selection */}
-                  {selectedDate && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-base font-semibold text-slate-700 flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          {t.booking.selectTime}
-                        </Label>
-                        {fetchingSlots && (
-                          <div className="flex items-center gap-2 text-sm text-blue-600">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="font-medium">{t.booking.checking}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                        {timeSlots.map((time) => {
-                          const isBooked = bookedTimes.includes(time)
-                          const isPassed = passedTimes.includes(time)
-                          const isSelected = selectedTime === time
-                          const isDisabled = isBooked || isPassed || fetchingSlots
-
-                          return (
-                            <Button
-                              key={time}
-                              type="button"
-                              onClick={() => !isDisabled && setSelectedTime(time)}
-                              disabled={isDisabled}
-                              className={`h-12 text-sm font-medium transition-all duration-200 ${
-                                isSelected
-                                  ? "bg-blue-500 hover:bg-blue-600 text-white shadow-lg scale-105 ring-2 ring-blue-300"
-                                  : isBooked
-                                    ? "bg-red-100 text-red-600 border-red-200 cursor-not-allowed opacity-60"
-                                    : isPassed
-                                      ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50"
-                                      : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 hover:scale-105"
-                              }`}
-                              variant={isSelected ? "default" : "outline"}
-                            >
-                              <div className="flex flex-col items-center gap-1">
-                                <span>{time}</span>
-                                <div className="flex">
-                                  {isBooked && <XCircle className="h-3 w-3" />}
-                                  {isPassed && <Timer className="h-3 w-3" />}
-                                </div>
-
-                                {!isDisabled && !isSelected && (
-                                  <CheckCircle2 className="h-3 w-3 opacity-0 group-hover:opacity-100" />
-                                )}
-                              </div>
-                            </Button>
-                          )
-                        })}
-                      </div>
-
-                      {/* Enhanced Legend */}
-                      <div className="bg-slate-50 rounded-lg p-4 space-y-2">
-                        <div className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">
-                          Time Slot Legend
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 bg-white border border-slate-200 rounded"></div>
-                            <span className="text-slate-600">Available</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 bg-red-100 border border-red-200 rounded"></div>
-                            <span className="text-slate-600">Booked</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 bg-gray-100 border border-gray-200 rounded"></div>
-                            <span className="text-slate-600">Past Time</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Enhanced Contact Information Form */}
-                  <div className="space-y-4">
-                    <div className="border-t pt-6">
-                      <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                        <User className="h-5 w-5" />
-                        Your Information
-                      </h3>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="clientName"
-                            className="text-sm font-medium text-slate-700 flex items-center gap-2"
-                          >
-                            <User className="h-4 w-4" />
-                            {t.booking.fullName}
-                          </Label>
-                          <Input
-                            id="clientName"
-                            value={clientName}
-                            onChange={(e) => setClientName(e.target.value)}
-                            required
-                            placeholder={t.booking.yourFullName}
-                            className="h-11 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="clientEmail"
-                            className="text-sm font-medium text-slate-700 flex items-center gap-2"
-                          >
-                            <Mail className="h-4 w-4" />
-                            {t.auth.email}
-                          </Label>
-                          <Input
-                            id="clientEmail"
-                            type="email"
-                            value={clientEmail}
-                            onChange={(e) => setClientEmail(e.target.value)}
-                            required
-                            placeholder={t.booking.yourEmail}
-                            className="h-11 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="clientPhone"
-                            className="text-sm font-medium text-slate-700 flex items-center gap-2"
-                          >
-                            <Phone className="h-4 w-4" />
-                            {t.booking.phoneOptional}
-                          </Label>
-                          <Input
-                            id="clientPhone"
-                            type="tel"
-                            value={clientPhone}
-                            onChange={(e) => setClientPhone(e.target.value)}
-                            placeholder={t.booking.yourPhone}
-                            required
-                            className="h-11 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="age" className="text-sm font-medium text-slate-700">
-                            Age
-                          </Label>
-                          <Input
-                            id="age"
-                            type="number"
-                            value={age}
-                            onChange={(e) => setAge(e.target.value)}
-                            placeholder="Your age"
-                            className="h-11 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2 mt-4">
-                        <Label htmlFor="notes" className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                          <MessageSquare className="h-4 w-4" />
-                          {t.booking.additionalNotes}
-                        </Label>
-                        <Textarea
-                          id="notes"
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          placeholder={t.booking.specialRequests}
-                          rows={3}
-                          className="border-slate-200 focus:border-blue-500 focus:ring-blue-500 resize-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Enhanced Submit Button */}
-                  <Button
-                    type="submit"
-                    className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
-                    disabled={loading || !selectedService || !selectedDate || !selectedTime || fetchingSlots}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        Processing Booking...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="mr-2 h-5 w-5" />
-                        {t.booking.bookAppointment}
-                      </>
-                    )}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <Link href="/" className="flex items-center text-blue-600 hover:text-blue-700">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Home
+            </Link>
+            <h1 className="text-2xl font-bold text-gray-900">Book Appointment</h1>
+            <div></div>
           </div>
         </div>
       </div>
 
-      {/* Image Gallery */}
-      <ImageGallery open={showGallery} onOpenChange={setShowGallery} images={storeImages} initialIndex={0} />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Store Information */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-8">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl">{store.title}</CardTitle>
+                  {storeImages.length > 0 && (
+                    <Button variant="outline" size="sm" onClick={() => setShowImageGallery(true)}>
+                      <ImageIcon className="h-4 w-4 mr-1" />
+                      Gallery
+                    </Button>
+                  )}
+                </div>
+                <CardDescription>by {store.barber_name}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {primaryImage && (
+                  <div className="aspect-video rounded-lg overflow-hidden">
+                    <img
+                      src={`data:image/jpeg;base64,${primaryImage.image_data}`}
+                      alt={store.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
+                  <span className="text-sm text-gray-600">{store.address}</span>
+                </div>
+
+                {store.description && <p className="text-sm text-gray-600">{store.description}</p>}
+
+                {/* Booking Summary */}
+                {selectedService && selectedDate && selectedTime && (
+                  <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h3 className="font-semibold text-blue-900 mb-2">Booking Summary</h3>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Service:</span>
+                        <span className="font-medium">{selectedService.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Date:</span>
+                        <span className="font-medium">{formatDate(selectedDate)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Time:</span>
+                        <span className="font-medium">{formatTime(selectedTime)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Duration:</span>
+                        <span className="font-medium">{selectedService.duration_minutes} min</span>
+                      </div>
+                      <div className="flex justify-between border-t border-blue-200 pt-1 mt-2">
+                        <span className="text-blue-700 font-semibold">Price:</span>
+                        <span className="font-bold">{formatPrice(selectedService.price)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Booking Form */}
+          <div className="lg:col-span-2">
+            <form onSubmit={handleBooking} className="space-y-6">
+              {/* Service Selection */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-semibold text-sm">1</span>
+                    </div>
+                    Select a Service
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {services.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">No services available at this location.</p>
+                  ) : (
+                    <div className="grid gap-3">
+                      {services.map((service) => (
+                        <div
+                          key={service.id}
+                          className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                            selectedService?.id === service.id
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                          onClick={() => setSelectedService(service)}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold">{service.name}</h3>
+                                {selectedService?.id === service.id && <Check className="h-4 w-4 text-blue-600" />}
+                              </div>
+                              {service.description && (
+                                <p className="text-sm text-gray-600 mt-1">{service.description}</p>
+                              )}
+                              <div className="flex items-center gap-4 mt-2">
+                                <Badge variant="secondary" className="text-xs">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  {service.duration_minutes} min
+                                </Badge>
+                                <span className="font-bold text-blue-600">{formatPrice(service.price)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Date & Time Selection */}
+              {selectedService && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 font-semibold text-sm">2</span>
+                      </div>
+                      Select Date & Time
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="date">Select Date</Label>
+                      <Input
+                        id="date"
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => {
+                          setSelectedDate(e.target.value)
+                          setSelectedTime("") // Reset time when date changes
+                        }}
+                        min={getTomorrowDate()}
+                        max={getMaxDate()}
+                        className="mt-1"
+                        required
+                      />
+                    </div>
+
+                    {selectedDate && (
+                      <div>
+                        <Label>Available Times for {formatDate(selectedDate)}</Label>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mt-2">
+                          {availableSlots.map((slot) => (
+                            <Button
+                              key={slot}
+                              type="button"
+                              variant={selectedTime === slot ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setSelectedTime(slot)}
+                              className="text-xs"
+                            >
+                              {formatTime(slot)}
+                            </Button>
+                          ))}
+                        </div>
+                        {availableSlots.length === 0 && (
+                          <p className="text-sm text-gray-500 mt-2">
+                            No available time slots for this date. Please select a different date.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Customer Information */}
+              {selectedService && selectedDate && selectedTime && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 font-semibold text-sm">3</span>
+                      </div>
+                      Your Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="clientName">Full Name *</Label>
+                        <Input
+                          id="clientName"
+                          type="text"
+                          value={bookingForm.clientName}
+                          onChange={(e) => setBookingForm({ ...bookingForm, clientName: e.target.value })}
+                          required
+                          className="mt-1"
+                          placeholder="Your full name"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="age">Age</Label>
+                        <Input
+                          id="age"
+                          type="number"
+                          value={bookingForm.age}
+                          onChange={(e) => setBookingForm({ ...bookingForm, age: e.target.value })}
+                          className="mt-1"
+                          placeholder="Your age"
+                          min="1"
+                          max="120"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="clientEmail">Email Address *</Label>
+                      <Input
+                        id="clientEmail"
+                        type="email"
+                        value={bookingForm.clientEmail}
+                        onChange={(e) => setBookingForm({ ...bookingForm, clientEmail: e.target.value })}
+                        required
+                        className="mt-1"
+                        placeholder="your.email@example.com"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="clientPhone">Phone Number</Label>
+                      <Input
+                        id="clientPhone"
+                        type="tel"
+                        value={bookingForm.clientPhone}
+                        onChange={(e) => setBookingForm({ ...bookingForm, clientPhone: e.target.value })}
+                        className="mt-1"
+                        placeholder="(555) 123-4567"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="notes">Special Requests or Notes</Label>
+                      <Textarea
+                        id="notes"
+                        value={bookingForm.notes}
+                        onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
+                        className="mt-1"
+                        placeholder="Any special requests or notes for your barber..."
+                        rows={3}
+                      />
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
+                    >
+                      {isSubmitting ? "Booking..." : <>Confirm Booking - {formatPrice(selectedService.price)}</>}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {/* Image Gallery Modal */}
+      {showImageGallery && storeImages.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-semibold">{store.title} - Gallery</h3>
+              <Button variant="outline" size="sm" onClick={() => setShowImageGallery(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {storeImages.map((image) => (
+                <div key={image.id} className="aspect-video rounded-lg overflow-hidden">
+                  <img
+                    src={`data:image/jpeg;base64,${image.image_data}`}
+                    alt={image.image_name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
