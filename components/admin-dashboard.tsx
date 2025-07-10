@@ -68,18 +68,23 @@ export function AdminDashboard({ user, barbers: initialBarbers, appointments }: 
   const [showCreateBarber, setShowCreateBarber] = useState(false)
   const router = useRouter()
   
-  const handleStatusChange = async (barberId: string, newStatus: "trial" | "active" | "expired") => {
-    const updated = barbers.map((barber) =>
-      barber.id === barberId ? { ...barber, status: newStatus } : barber
-    )
-    setBarbers(updated)
+const handleStatusChange = async (barberId: string, newStatus: "trial" | "active" | "expired") => {
+  const updated = barbers.map((barber) =>
+    barber.id === barberId ? { ...barber, status: newStatus } : barber
+  )
+  setBarbers(updated)
 
-    await fetch(`/api/admin/barbers/${barberId}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    })
+  // ✅ Correct URL here
+  const response = await fetch(`/api/admin/barbers/${barberId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: newStatus }),
+  })
+
+  if (!response.ok) {
+    console.error("Failed to update barber status:", await response.json())
   }
+}
 
 
   const handleLogout = async () => {
