@@ -12,6 +12,6 @@ export async function GET(request: Request, { params }: { params: { slug: string
     return NextResponse.json(store)
   } catch (error) {
     console.error("Error fetching store:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fetch store" }, { status: 500 })
   }
 }

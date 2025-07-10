@@ -720,3 +720,110 @@ export async function createAppointment(
     // Handle other errors
     console.error("Error creating appointment:", error)
     throw new Error("Failed to create appointment. Please try again.")
+  }
+}
+
+export async function updateAppointmentStatus(appointmentId: string, status: string) {
+  const result = await sql`
+    UPDATE appointments 
+    SET status = ${status}
+    WHERE id = ${appointmentId}
+    RETURNING *
+  `
+  return result[0]
+}
+
+export async function getAllAppointments() {
+  const result = await sql`
+    SELECT a.*, s.name as service_name, s.price as service_price, 
+           st.title as store_title, u.name as barber_name
+    FROM appointments a
+    JOIN services s ON a.service_id = s.id
+    JOIN stores st ON a.store_id = st.id
+    JOIN users u ON st.barber_id = u.id
+    ORDER BY a.appointment_date DESC, a.appointment_time DESC
+  `
+  return result
+}
+
+// Get current user from session (placeholder - implement based on your auth system)
+export async function getCurrentUser(): Promise<User | null> {
+  // This is a placeholder implementation
+  // In a real app, you would get this from your session/JWT token
+  return null
+}
+
+// Generate available time slots for a given date
+export async function getAvailableTimeSlots(storeId: string, date: string, serviceDuration = 30): Promise<string[]> {
+  try {
+    // Get working hours for the date
+    const workingHours = await getWorkingHoursForDate(storeId, date)
+
+    // If no working hours set or store is closed, return empty array
+    if (!workingHours || workingHours.is_closed) {
+      return []
+    }
+
+    // Get existing appointments for the date
+    const existingAppointments = await sql`
+      SELECT a.appointment_time, s.duration_minutes
+      FROM appointments a
+      JOIN services s ON a.service_id = s.id
+      WHERE a.store_id = ${storeId}
+      AND a.appointment_date = ${date}
+      AND a.status IN ('pending', 'confirmed')
+    `
+
+    // Get blocked times for the date
+    const blockedTimes = await getBlockedTimesByStoreIdAndDate(storeId, date)
+
+    // Generate all possible time slots
+    const startTime = timeToMinutes(workingHours.start_time)
+    const endTime = timeToMinutes(workingHours.end_time)
+    const slots: string[] = []
+
+    for (let time = startTime; time < endTime; time += 30) {
+      // Convert minutes back to time string
+      const hours = Math.floor(time / 60)
+      const minutes = time % 60
+      const timeString = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
+
+      // Check if this slot conflicts with existing appointments
+      let hasConflict = false
+
+      // Check against existing appointments
+      for (const appointment of existingAppointments) {
+        const appointmentStart = timeToMinutes(appointment.appointment_time)
+        const appointmentEnd = appointmentStart + appointment.duration_minutes
+
+        if (time < appointmentEnd && time + serviceDuration > appointmentStart) {
+          hasConflict = true
+          break
+        }
+      }
+
+      // Check against blocked times
+      if (!hasConflict) {
+        for (const blocked of blockedTimes) {
+          const blockedStart = timeToMinutes(blocked.start_time)
+          const blockedEnd = timeToMinutes(blocked.end_time)
+
+          if (time < blockedEnd && time + serviceDuration > blockedStart) {
+            hasConflict = true
+            break
+          }
+        }
+      }
+
+      // If no conflict and slot ends before closing time, add it
+      if (!hasConflict && time + serviceDuration <= endTime) {
+        slots.push(timeString)
+      }
+    }
+
+    return slots
+  } catch (error) {
+    console.error("Error generating available time slots:", error)
+    return []
+  }
+}
