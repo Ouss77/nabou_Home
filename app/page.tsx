@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Scissors,
   Calendar,
@@ -21,28 +21,71 @@ import {
   MapPin,
   Phone,
   Mail,
-  Clock,
   Award,
   Heart,
   Target,
   Send,
+  Loader2,
+  AlertCircle,
+  ImageIcon,
 } from "lucide-react"
 import { LanguageSelector } from "@/components/language-selector"
 import { BarberRegistrationDialog } from "@/components/barber-registration-dialog"
 import { useLanguage } from "@/components/language-provider"
 import { useToast } from "@/hooks/use-toast"
 
+interface Store {
+  id: string
+  title: string
+  address: string
+  description: string | null
+  slug: string
+  barber_id: string
+  image_url: string | null
+  created_at: string
+  updated_at: string
+}
+
 export default function HomePage() {
   const { t } = useLanguage()
   const { toast } = useToast()
   const [showRegistration, setShowRegistration] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [stores, setStores] = useState<Store[]>([])
+  const [loadingStores, setLoadingStores] = useState(true)
+  const [storesError, setStoresError] = useState<string | null>(null)
   const [contactForm, setContactForm] = useState({
     name: "",
     email: "",
     message: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Fetch stores on component mount
+  useEffect(() => {
+    fetchStores()
+  }, [])
+
+  const fetchStores = async () => {
+    try {
+      setLoadingStores(true)
+      setStoresError(null)
+
+      const response = await fetch("/api/stores")
+      if (!response.ok) {
+        throw new Error("Failed to fetch stores")
+      }
+
+      const storesData = await response.json()
+      setStores(Array.isArray(storesData) ? storesData : [])
+    } catch (error) {
+      console.error("Error fetching stores:", error)
+      setStoresError("Unable to load store locations. Please try again later.")
+      setStores([])
+    } finally {
+      setLoadingStores(false)
+    }
+  }
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,12 +107,13 @@ export default function HomePage() {
         })
         setContactForm({ name: "", email: "", message: "" })
       } else {
-        throw new Error("Failed to send message")
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to send message")
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to send message. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to send message. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -84,37 +128,6 @@ export default function HomePage() {
     }
     setMobileMenuOpen(false)
   }
-
-  // Sample store data - in a real app, this would come from your database
-  const stores = [
-    {
-      id: "1",
-      name: "Downtown Barber Shop",
-      address: "123 Main Street, Downtown",
-      phone: "(555) 123-4567",
-      hours: "Mon-Sat: 9AM-7PM, Sun: 10AM-5PM",
-      slug: "downtown-barber",
-      image: "/placeholder.jpg?height=200&width=300&text=Downtown+Shop",
-    },
-    {
-      id: "2",
-      name: "Westside Cuts",
-      address: "456 Oak Avenue, Westside",
-      phone: "(555) 234-5678",
-      hours: "Mon-Fri: 8AM-8PM, Sat-Sun: 9AM-6PM",
-      slug: "westside-cuts",
-      image: "/placeholder.jpg?height=200&width=300&text=Westside+Cuts",
-    },
-    {
-      id: "3",
-      name: "Classic Barbershop",
-      address: "789 Pine Road, Uptown",
-      phone: "(555) 345-6789",
-      hours: "Tue-Sat: 10AM-6PM, Closed Sun-Mon",
-      slug: "classic-barbershop",
-      image: "/placeholder.jpg?height=200&width=300&text=Classic+Shop",
-    },
-  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100">
@@ -448,7 +461,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Stores Section */}
+      {/* Dynamic Stores Section */}
       <section id="stores" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -458,44 +471,55 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {stores.map((store) => (
-              <Card key={store.id} className="overflow-hidden hover:shadow-xl transition-all duration-300 group">
-                <div className="aspect-video overflow-hidden">
-                  <img
-                    src={store.image || "/placeholder.svg"}
-                    alt={store.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-                <CardHeader>
-                  <CardTitle className="text-xl">{store.name}</CardTitle>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      <span>{store.address}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      <span>{store.phone}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      <span>{store.hours}</span>
-                    </div>
+          {/* Loading State */}
+          {loadingStores && (
+            <div className="flex justify-center items-center py-12">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+                <p className="text-gray-600">Loading store locations...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Error State */}
+          {storesError && (
+            <div className="max-w-md mx-auto">
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{storesError}</AlertDescription>
+              </Alert>
+              <div className="text-center mt-4">
+                <Button onClick={fetchStores} variant="outline">
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Stores Grid */}
+          {!loadingStores && !storesError && (
+            <>
+              {stores.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <MapPin className="h-8 w-8 text-gray-400" />
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <Link href={`/book/${store.slug}`}>
-                    <Button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
-                      Book Appointment
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Stores Available</h3>
+                  <p className="text-gray-600 mb-6">We're currently setting up new locations. Check back soon!</p>
+                  <Button onClick={() => setShowRegistration(true)}>
+                    Register Your Store
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {stores.map((store) => (
+                    <StoreCard key={store.id} store={store} />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </section>
 
@@ -563,7 +587,10 @@ export default function HomePage() {
                       className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                     >
                       {isSubmitting ? (
-                        "Sending..."
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sending...
+                        </>
                       ) : (
                         <>
                           Send Message
@@ -646,5 +673,82 @@ export default function HomePage() {
       {/* Registration Dialog */}
       <BarberRegistrationDialog open={showRegistration} onOpenChange={setShowRegistration} />
     </div>
+  )
+}
+
+// Store Card Component
+interface StoreCardProps {
+  store: Store
+}
+
+function StoreCard({ store }: StoreCardProps) {
+  const [storeImage, setStoreImage] = useState<string | null>(null)
+  const [loadingImage, setLoadingImage] = useState(true)
+
+  useEffect(() => {
+    fetchStoreImage()
+  }, [store.id])
+
+  const fetchStoreImage = async () => {
+    try {
+      const response = await fetch(`/api/stores/${store.id}/images`)
+      if (response.ok) {
+        const data = await response.json()
+        const primaryImage = data.images?.find((img: any) => img.is_primary) || data.images?.[0]
+        if (primaryImage) {
+          setStoreImage(`data:${primaryImage.image_type || "image/jpeg"};base64,${primaryImage.image_data}`)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching store image:", error)
+    } finally {
+      setLoadingImage(false)
+    }
+  }
+
+  return (
+    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group">
+      <div className="aspect-video overflow-hidden bg-gray-100">
+        {loadingImage ? (
+          <div className="w-full h-full flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+          </div>
+        ) : storeImage ? (
+          <img
+            src={storeImage || "/placeholder.svg"}
+            alt={store.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : store.image_url ? (
+          <img
+            src={store.image_url || "/placeholder.svg"}
+            alt={store.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+            <ImageIcon className="h-12 w-12 text-gray-400" />
+          </div>
+        )}
+      </div>
+      <CardHeader>
+        <CardTitle className="text-xl">{store.title}</CardTitle>
+        <div className="space-y-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 flex-shrink-0" />
+            <span>{store.address}</span>
+          </div>
+          {store.description && <p className="text-gray-600 line-clamp-2">{store.description}</p>}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Link href={`/book/${store.slug}`}>
+          <Button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
+            Book Appointment
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </Link>
+      </CardContent>
+    </Card>
   )
 }
