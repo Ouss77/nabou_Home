@@ -76,7 +76,7 @@ const handleStatusChange = async (barberId: string, newStatus: "trial" | "active
   setBarbers(updated)
 
   // ✅ Correct URL here
-  const response = await fetch(`/api/admin/barbers/${barberId}`, {
+  const response = await fetch(`/api/admin/barbers/${barberId}/status`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status: newStatus }),
