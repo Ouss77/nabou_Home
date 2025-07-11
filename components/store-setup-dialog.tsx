@@ -368,13 +368,11 @@ export function StoreSetupDialog({ open, onOpenChange, store, onSuccess }: Store
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {/* {t.store.cancel} */}
-              Cancel
+              {t.store.cancel}
             </Button>
             <Button type="submit" disabled={loading || loadingWorkingHours}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {/* {store ? t.store.update : t.store.create} */}
-              {store ? "Update Store" : "Create Store"}
+              {store ? t.store.update : t.store.create}
             </Button>
           </div>
         </form>

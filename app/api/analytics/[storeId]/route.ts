@@ -6,4 +6,4 @@ export async function GET(request, { params }) {
   const appointments = await getAppointmentsByStoreId(storeId);
   const services = await getServicesByStoreId(storeId);
   return NextResponse.json({ appointments, services });
-} 
+}

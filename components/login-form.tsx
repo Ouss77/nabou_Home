@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2 } from "lucide-react"
+import { Loader2, AlertTriangle } from "lucide-react"
 import { useLanguage } from "@/components/language-provider"
 import { LanguageSelector } from "@/components/language-selector"
 
@@ -19,6 +19,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [errorCode, setErrorCode] = useState("")
   const router = useRouter()
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export function LoginForm() {
     e.preventDefault()
     setLoading(true)
     setError("")
+    setErrorCode("")
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -62,6 +64,7 @@ export function LoginForm() {
       const data = await response.json()
 
       if (!response.ok) {
+        setErrorCode(data.code || "")
         throw new Error(data.error || "Login failed")
       }
 
@@ -78,6 +81,20 @@ export function LoginForm() {
     }
   }
 
+  const getErrorIcon = () => {
+    if (errorCode === "TRIAL_EXPIRED" || errorCode === "ACCESS_RESTRICTED") {
+      return <AlertTriangle className="h-4 w-4" />
+    }
+    return null
+  }
+
+  const getErrorVariant = () => {
+    if (errorCode === "TRIAL_EXPIRED") {
+      return "default" // Use default styling for trial expiration
+    }
+    return "destructive"
+  }
+
   return (
     <Card className="border-0 shadow-xl">
       <CardHeader>
@@ -90,8 +107,27 @@ export function LoginForm() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
+            <Alert
+              variant={getErrorVariant()}
+              className={errorCode === "TRIAL_EXPIRED" ? "border-orange-200 bg-orange-50 text-orange-800" : ""}
+            >
+              {getErrorIcon()}
+              <AlertDescription className="flex items-center gap-2">
+                {error}
+                {errorCode === "TRIAL_EXPIRED" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-2 h-6 text-xs border-orange-300 text-orange-700 hover:bg-orange-100 bg-transparent"
+                    onClick={() => {
+                      // This could redirect to a pricing/upgrade page
+                      window.open("mailto:support@barbershop.com?subject=Upgrade Request", "_blank")
+                    }}
+                  >
+                    Contact Support
+                  </Button>
+                )}
+              </AlertDescription>
             </Alert>
           )}
 
@@ -133,6 +169,14 @@ export function LoginForm() {
           <p>
             <strong>{t.auth.barber}:</strong> john@barbershop.com / barber123
           </p>
+          {errorCode === "TRIAL_EXPIRED" && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-blue-800 text-sm">
+                <strong>Trial Information:</strong> Free accounts are limited to 20 appointments. Contact support to
+                upgrade your account for unlimited access.
+              </p>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

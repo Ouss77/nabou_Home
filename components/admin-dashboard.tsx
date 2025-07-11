@@ -27,6 +27,7 @@ interface Barber {
   name: string
   created_at: string
   appointment_count: number
+  status: "trial" | "active" | "expired"
 }
 
 interface Appointment {
@@ -48,10 +49,44 @@ interface AdminDashboardProps {
   appointments: Appointment[]
 }
 
-export function AdminDashboard({ user, barbers, appointments }: AdminDashboardProps) {
+function StatusBadge({ status }: { status: "trial" | "active" | "expired" }) {
+  const colorMap = {
+    trial: "bg-yellow-100 text-yellow-800",
+    active: "bg-green-100 text-green-800",
+    expired: "bg-red-100 text-red-800",
+  }
+
+  return (
+    <span className={`px-2 py-1 text-xs rounded font-medium ${colorMap[status]}`}>
+      {status}
+    </span>
+  )
+}
+export function AdminDashboard({ user, barbers: initialBarbers, appointments }: AdminDashboardProps) {
+
   const { t, language } = useLanguage()
+  const [barbers, setBarbers] = useState(initialBarbers) // ← now barbers is reactive
   const [showCreateBarber, setShowCreateBarber] = useState(false)
   const router = useRouter()
+  
+const handleStatusChange = async (barberId: string, newStatus: "trial" | "active" | "expired") => {
+  const updated = barbers.map((barber) =>
+    barber.id === barberId ? { ...barber, status: newStatus } : barber
+  )
+  setBarbers(updated)
+
+  // ✅ Correct URL here
+  const response = await fetch(`/api/admin/barbers/${barberId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: newStatus }),
+  })
+
+  if (!response.ok) {
+    console.error("Failed to update barber status:", await response.json())
+  }
+}
+
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" })
@@ -150,6 +185,7 @@ export function AdminDashboard({ user, barbers, appointments }: AdminDashboardPr
                       <TableHead>{t.admin.name}</TableHead>
                       <TableHead>{t.auth.email}</TableHead>
                       <TableHead>{t.admin.appointments}</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>{t.admin.joined}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -161,6 +197,24 @@ export function AdminDashboard({ user, barbers, appointments }: AdminDashboardPr
                         <TableCell>
                           <Badge variant="secondary">{barber.appointment_count}</Badge>
                         </TableCell>
+<TableCell>
+<select
+  value={barber.status}
+  onChange={(e) => handleStatusChange(barber.id, e.target.value as "trial" | "active" | "expired")}
+  className={`
+    text-xs font-medium rounded px-2 py-1
+    ${barber.status === "trial" && "bg-yellow-100 text-yellow-800"}
+    ${barber.status === "active" && "bg-green-100 text-green-800"}
+    ${barber.status === "expired" && "bg-red-100 text-red-800"}
+  `}
+>
+  <option value="trial" className="bg-yellow-100 text-yellow-800">Trial</option>
+  <option value="active" className="bg-green-100 text-green-800">Active</option>
+  <option value="expired" className="bg-red-100 text-red-800">Expired</option>
+</select>
+
+</TableCell>
+
                         <TableCell>{new Date(barber.created_at).toLocaleDateString()}</TableCell>
                       </TableRow>
                     ))}

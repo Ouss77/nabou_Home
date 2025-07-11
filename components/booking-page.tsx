@@ -16,7 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
-  Images,
+  ImageIcon,
   Calendar,
   User,
   Mail,
@@ -138,12 +138,16 @@ export function BookingPage({ store, services }: BookingPageProps) {
     setLoadingImages(true)
     try {
       const response = await fetch(`/api/stores/${store.id}/images`)
-      const data = await response.json()
       if (response.ok) {
+        const data = await response.json()
         setStoreImages(data.images || [])
+      } else {
+        console.error("Failed to fetch store images:", response.status)
+        setStoreImages([])
       }
     } catch (error) {
       console.error("Failed to fetch store images:", error)
+      setStoreImages([])
     } finally {
       setLoadingImages(false)
     }
@@ -155,7 +159,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
     return () => clearInterval(interval)
   }, [])
 
-  // Memoized function to fetch booked times
+  // Memoized function to fetch booked times with better error handling
   const fetchBookedTimes = useCallback(async () => {
     if (!selectedDate || !store.id) {
       setBookedTimes([])
@@ -184,14 +188,24 @@ export function BookingPage({ store, services }: BookingPageProps) {
       })
 
       const response = await fetch(`/api/bookings/available-slots?${params}`)
-      const data = await response.json()
 
-      if (response.ok) {
-        setBookedTimes(data.bookedTimes || [])
-      } else {
-        console.error("[FetchBookedTimes] Failed to fetch booked times:", data.error)
+      // Check if response is ok before trying to parse JSON
+      if (!response.ok) {
+        console.error("[FetchBookedTimes] API returned error:", response.status, response.statusText)
         setBookedTimes([])
+        return
       }
+
+      // Check content type to ensure it's JSON
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error("[FetchBookedTimes] Response is not JSON:", contentType)
+        setBookedTimes([])
+        return
+      }
+
+      const data = await response.json()
+      setBookedTimes(data.bookedTimes || [])
     } catch (err) {
       console.error("[FetchBookedTimes] Error fetching booked times:", err)
       setBookedTimes([])
@@ -487,7 +501,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
                       className="absolute bottom-4 right-4 bg-black/70 hover:bg-black/80 text-white shadow-lg backdrop-blur-sm"
                       size="sm"
                     >
-                      <Images className="h-4 w-4 mr-2" />
+                      <ImageIcon className="h-4 w-4 mr-2" />
                       View Gallery ({storeImages.length})
                     </Button>
                   )}
@@ -651,7 +665,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
                               variant="outline"
                               size="sm"
                               onClick={navigateToPreviousMonth}
-                              className="hover:bg-slate-100"
+                              className="hover:bg-slate-100 bg-transparent"
                             >
                               <ChevronLeft className="h-4 w-4" />
                             </Button>
@@ -660,7 +674,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
                               variant="outline"
                               size="sm"
                               onClick={navigateToNextMonth}
-                              className="hover:bg-slate-100"
+                              className="hover:bg-slate-100 bg-transparent"
                             >
                               <ChevronRight className="h-4 w-4" />
                             </Button>
@@ -744,8 +758,9 @@ export function BookingPage({ store, services }: BookingPageProps) {
                               <div className="flex flex-col items-center gap-1">
                                 <span>{time}</span>
                                 <div className="flex">
-                                                                {isBooked && <XCircle className="h-3 w-3" />}
-                                {isPassed && <Timer className="h-3 w-3" />} </div>
+                                  {isBooked && <XCircle className="h-3 w-3" />}
+                                  {isPassed && <Timer className="h-3 w-3" />}{" "}
+                                </div>
 
                                 {!isDisabled && !isSelected && (
                                   <CheckCircle2 className="h-3 w-3 opacity-0 group-hover:opacity-100" />
@@ -906,3 +921,5 @@ export function BookingPage({ store, services }: BookingPageProps) {
     </div>
   )
 }
+
+// Export as named export to fix the deployment error

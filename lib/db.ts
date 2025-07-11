@@ -1,5 +1,5 @@
 import { neon } from "@neondatabase/serverless"
-import slugify from "slugify";
+import slugify from "slugify"
 
 // Create Neon SQL client
 const sql = neon(process.env.DATABASE_URL!)
@@ -10,6 +10,7 @@ export interface User {
   email: string
   name: string
   role: "admin" | "barber"
+  status?: "trial" | "active" | "expired"
   created_at: string
   phone?: string
   city?: string
@@ -21,6 +22,7 @@ export interface Store {
   id: string
   barber_id: string
   title: string
+  slug: string
   address: string
   description: string | null
   image_url: string | null
@@ -123,36 +125,88 @@ export async function createUser(
   city?: string,
 ) {
   const result = await sql`
-    INSERT INTO users (email, password_hash, name, role, phone, city, profile_completed, email_verified)
-    VALUES (${email}, ${passwordHash}, ${name}, ${role}, ${phone || null}, ${city || null}, ${phone ? true : false}, true)
-    RETURNING id, email, name, role, phone, city, profile_completed, email_verified, created_at
+    INSERT INTO users (email, password_hash, name, role, phone, city, profile_completed, email_verified, status)
+    VALUES (${email}, ${passwordHash}, ${name}, ${role}, ${phone || null}, ${city || null}, ${phone ? true : false}, true, ${role === "barber" ? "trial" : null})
+    RETURNING id, email, name, role, phone, city, profile_completed, email_verified, status, created_at
   `
   return result[0]
 }
 
 export async function getUserByEmail(email: string) {
   const result = await sql`
-    SELECT id, email, password_hash, name, role, created_at
+    SELECT id, email, password_hash, name, role, status, created_at
     FROM users
     WHERE email = ${email}
   `
   return result[0] || null
 }
 
+export async function updateBarberStatus(barberId: string, status: "trial" | "active" | "expired") {
+  const result = await sql`
+    UPDATE users 
+    SET status = ${status}
+    WHERE id = ${barberId} AND role = 'barber'
+    RETURNING id, email, name, role, status, created_at
+  `
+  return result[0] || null
+}
+
+// Get appointment count for a specific barber
+export async function getBarberAppointmentCount(barberId: string): Promise<number> {
+  const result = await sql`
+    SELECT COUNT(a.id) as appointment_count
+    FROM appointments a
+    JOIN stores s ON a.store_id = s.id
+    WHERE s.barber_id = ${barberId}
+  `
+  return Number(result[0]?.appointment_count || 0)
+}
+
+// Check and update barber status based on appointment count
+export async function checkAndUpdateBarberTrialStatus(barberId: string): Promise<User | null> {
+  const user = await sql`
+    SELECT id, email, name, role, status, created_at
+    FROM users
+    WHERE id = ${barberId} AND role = 'barber'
+  `
+
+  if (!user[0]) return null
+
+  const currentUser = user[0]
+
+  // Only check trial users
+  if (currentUser.status === "trial") {
+    const appointmentCount = await getBarberAppointmentCount(barberId)
+
+    // If they have more than 20 appointments, expire their trial
+    if (appointmentCount > 20) {
+      const updatedUser = await updateBarberStatus(barberId, "expired")
+      return updatedUser
+    }
+  }
+
+  return currentUser
+}
+
 export async function getAllStores() {
-  const result = await sql` SELECT * FROM stores`
+  const result = await sql`
+    SELECT s.*, u.name as barber_name 
+    FROM stores s
+    JOIN users u ON s.barber_id = u.id
+    ORDER BY s.created_at DESC
+  `
   return result
 }
 
 export async function getAllBarbers() {
   const result = await sql`
-    SELECT u.id, u.email, u.name, u.created_at,
+    SELECT u.id, u.email, u.name, u.status, u.created_at,
            COUNT(a.id) as appointment_count
     FROM users u
     LEFT JOIN stores s ON u.id = s.barber_id
     LEFT JOIN appointments a ON s.id = a.store_id
     WHERE u.role = 'barber'
-    GROUP BY u.id, u.email, u.name, u.created_at
+    GROUP BY u.id, u.email, u.name, u.status, u.created_at
     ORDER BY u.created_at DESC
   `
   return result
@@ -161,19 +215,30 @@ export async function getAllBarbers() {
 // Store functions
 export async function getStoreByBarberId(barberId: string) {
   const result = await sql`
-    SELECT * FROM stores WHERE barber_id = ${barberId}
+    SELECT s.*, u.name as barber_name 
+    FROM stores s
+    JOIN users u ON s.barber_id = u.id
+    WHERE s.barber_id = ${barberId}
   `
   return result[0] || null
 }
+
 export async function getStoreBySlug(slug: string) {
   const result = await sql`
-    SELECT * FROM stores WHERE slug = ${slug}
+    SELECT s.*, u.name as barber_name 
+    FROM stores s
+    JOIN users u ON s.barber_id = u.id
+    WHERE s.slug = ${slug}
   `
   return result[0] || null
 }
+
 export async function getStoreById(storeId: string) {
   const result = await sql`
-    SELECT * FROM stores WHERE id = ${storeId}
+    SELECT s.*, u.name as barber_name 
+    FROM stores s
+    JOIN users u ON s.barber_id = u.id
+    WHERE s.id = ${storeId}
   `
   return result[0] || null
 }
@@ -189,15 +254,15 @@ export async function createStore(
     lower: true,
     strict: true, // removes special chars
     trim: true,
-  });
+  })
 
   const result = await sql`
     INSERT INTO stores (barber_id, title, slug, address, description, image_url)
     VALUES (${barberId}, ${title}, ${slug}, ${address}, ${description}, ${imageUrl || null})
     RETURNING *
-  `;
+  `
 
-  return result[0];
+  return result[0]
 }
 
 export async function updateStore(
@@ -207,9 +272,15 @@ export async function updateStore(
   description: string,
   imageUrl?: string,
 ) {
+  const slug = slugify(title, {
+    lower: true,
+    strict: true,
+    trim: true,
+  })
+
   const result = await sql`
     UPDATE stores 
-    SET title = ${title}, address = ${address}, description = ${description}, 
+    SET title = ${title}, slug = ${slug}, address = ${address}, description = ${description}, 
         image_url = ${imageUrl || null}, updated_at = NOW()
     WHERE id = ${storeId}
     RETURNING *
@@ -652,9 +723,20 @@ export async function createAppointment(
   }
 }
 
+export async function updateAppointmentStatus(appointmentId: string, status: string) {
+  const result = await sql`
+    UPDATE appointments 
+    SET status = ${status}
+    WHERE id = ${appointmentId}
+    RETURNING *
+  `
+  return result[0]
+}
+
 export async function getAllAppointments() {
   const result = await sql`
-    SELECT a.*, s.name as service_name, s.price as service_price, st.title as store_title, u.name as barber_name
+    SELECT a.*, s.name as service_name, s.price as service_price, 
+           st.title as store_title, u.name as barber_name
     FROM appointments a
     JOIN services s ON a.service_id = s.id
     JOIN stores st ON a.store_id = st.id
@@ -664,113 +746,84 @@ export async function getAllAppointments() {
   return result
 }
 
-export async function getAppointmentsByStoreIdAndDate(storeId: string, date: string) {
-  const result = await sql`
-    SELECT a.appointment_time, s.duration_minutes
-    FROM appointments a
-    JOIN services s ON a.service_id = s.id
-    WHERE a.store_id = ${storeId} 
-    AND a.appointment_date = ${date} 
-    AND a.status IN ('pending', 'confirmed')
-    ORDER BY a.appointment_time
-  `
-  return result
+// Get current user from session (placeholder - implement based on your auth system)
+export async function getCurrentUser(): Promise<User | null> {
+  // This is a placeholder implementation
+  // In a real app, you would get this from your session/JWT token
+  return null
 }
 
-// Get all booked time slots for a specific date (including overlapping times and blocked times)
-export async function getBookedTimeSlots(storeId: string, date: string): Promise<string[]> {
-  const appointments = await getAppointmentsByStoreIdAndDate(storeId, date)
-  const blockedTimes = await getBlockedTimesByStoreIdAndDate(storeId, date)
-  const workingHours = await getWorkingHoursForDate(storeId, date)
-  const bookedSlots = new Set<string>()
+// Generate available time slots for a given date
+export async function getAvailableTimeSlots(storeId: string, date: string, serviceDuration = 30): Promise<string[]> {
+  try {
+    // Get working hours for the date
+    const workingHours = await getWorkingHoursForDate(storeId, date)
 
-  // Standard time slots (every 30 minutes from 9:00 to 17:30)
-  const timeSlots = [
-    "09:00",
-    "09:30",
-    "10:00",
-    "10:30",
-    "11:00",
-    "11:30",
-    "12:00",
-    "12:30",
-    "13:00",
-    "13:30",
-    "14:00",
-    "14:30",
-    "15:00",
-    "15:30",
-    "16:00",
-    "16:30",
-    "17:00",
-    "17:30",
-    "18:00",
-    "18:30",
-    "19:00",
-    "19:30",
-    "20:00",
-  ]
-
-  // If store is explicitly closed on this day, mark all slots as booked
-  if (workingHours && workingHours.is_closed) {
-    return [...timeSlots]
-  }
-
-  // Use working hours if available, otherwise default to 9:00-18:00
-  let workingStartMinutes = 9 * 60 // 9:00 AM
-  let workingEndMinutes = 18 * 60 // 6:00 PM
-
-  if (workingHours && !workingHours.is_closed) {
-    workingStartMinutes = timeToMinutes(workingHours.start_time)
-    workingEndMinutes = timeToMinutes(workingHours.end_time)
-  }
-
-  // Mark slots outside working hours as booked
-  for (const slot of timeSlots) {
-    const slotMinutes = timeToMinutes(slot)
-    if (slotMinutes < workingStartMinutes || slotMinutes >= workingEndMinutes) {
-      bookedSlots.add(slot)
+    // If no working hours set or store is closed, return empty array
+    if (!workingHours || workingHours.is_closed) {
+      return []
     }
-  }
 
-  // Mark slots blocked by appointments
-  for (const appointment of appointments) {
-    const [hours, minutes] = appointment.appointment_time.split(":").map(Number)
-    const startMinutes = hours * 60 + minutes
-    const endMinutes = startMinutes + appointment.duration_minutes
+    // Get existing appointments for the date
+    const existingAppointments = await sql`
+      SELECT a.appointment_time, s.duration_minutes
+      FROM appointments a
+      JOIN services s ON a.service_id = s.id
+      WHERE a.store_id = ${storeId}
+      AND a.appointment_date = ${date}
+      AND a.status IN ('pending', 'confirmed')
+    `
 
-    // Mark all time slots that overlap with this appointment as booked
-    for (const slot of timeSlots) {
-      const [slotHours, slotMinutes] = slot.split(":").map(Number)
-      const slotStart = slotHours * 60 + slotMinutes
-      const slotEnd = slotStart + 30 // Each slot is 30 minutes
+    // Get blocked times for the date
+    const blockedTimes = await getBlockedTimesByStoreIdAndDate(storeId, date)
 
-      // Check if this slot overlaps with the appointment
-      if (slotStart < endMinutes && slotEnd > startMinutes) {
-        bookedSlots.add(slot)
+    // Generate all possible time slots
+    const startTime = timeToMinutes(workingHours.start_time)
+    const endTime = timeToMinutes(workingHours.end_time)
+    const slots: string[] = []
+
+    for (let time = startTime; time < endTime; time += 30) {
+      // Convert minutes back to time string
+      const hours = Math.floor(time / 60)
+      const minutes = time % 60
+      const timeString = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
+
+      // Check if this slot conflicts with existing appointments
+      let hasConflict = false
+
+      // Check against existing appointments
+      for (const appointment of existingAppointments) {
+        const appointmentStart = timeToMinutes(appointment.appointment_time)
+        const appointmentEnd = appointmentStart + appointment.duration_minutes
+
+        if (time < appointmentEnd && time + serviceDuration > appointmentStart) {
+          hasConflict = true
+          break
+        }
+      }
+
+      // Check against blocked times
+      if (!hasConflict) {
+        for (const blocked of blockedTimes) {
+          const blockedStart = timeToMinutes(blocked.start_time)
+          const blockedEnd = timeToMinutes(blocked.end_time)
+
+          if (time < blockedEnd && time + serviceDuration > blockedStart) {
+            hasConflict = true
+            break
+          }
+        }
+      }
+
+      // If no conflict and slot ends before closing time, add it
+      if (!hasConflict && time + serviceDuration <= endTime) {
+        slots.push(timeString)
       }
     }
+
+    return slots
+  } catch (error) {
+    console.error("Error generating available time slots:", error)
+    return []
   }
-
-  // Mark slots blocked by blocked times
-  for (const blockedTime of blockedTimes) {
-    const [startHours, startMinutes] = blockedTime.start_time.split(":").map(Number)
-    const [endHours, endMinutes] = blockedTime.end_time.split(":").map(Number)
-    const blockedStartMinutes = startHours * 60 + startMinutes
-    const blockedEndMinutes = endHours * 60 + endMinutes
-
-    // Mark all time slots that overlap with this blocked time as booked
-    for (const slot of timeSlots) {
-      const [slotHours, slotMinutes] = slot.split(":").map(Number)
-      const slotStart = slotHours * 60 + slotMinutes
-      const slotEnd = slotStart + 30 // Each slot is 30 minutes
-
-      // Check if this slot overlaps with the blocked time
-      if (slotStart < blockedEndMinutes && slotEnd > blockedStartMinutes) {
-        bookedSlots.add(slot)
-      }
-    }
-  }
-
-  return Array.from(bookedSlots)
 }
