@@ -16,7 +16,7 @@ interface StoreSetupWizardProps {
   open: boolean
   onOpenChange: Dispatch<SetStateAction<boolean>>
   store: Store | null
-  onSuccess: () => void
+  onSuccess: (store: Store) => void // Modified onSuccess to pass the updated store
 }
 
 const WIZARD_STEPS = ["Store Info", "Services", "Working Hours", "Images"]
@@ -69,8 +69,10 @@ export function StoreSetupWizard({ open, onOpenChange, store: initialStore, onSu
   }
 
   const handleCloseAndRefresh = () => {
+    if (store) {
+      onSuccess(store) // Pass the updated store to the parent
+    }
     onOpenChange(false)
-    onSuccess()
   }
 
   const renderStepContent = () => {
