@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label" // Corrected import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Clock } from "lucide-react"
 
@@ -119,9 +120,9 @@ export function Step3WorkingHours({ storeId, onNext, onBack }: Step3WorkingHours
                     checked={!dayHours.is_closed}
                     onCheckedChange={(checked) => handleUpdate(index, "is_closed", !checked)}
                   />
-                  <label htmlFor={`closed-${index}`} className="text-sm text-muted-foreground">
+                  <Label htmlFor={`closed-${index}`} className="text-sm text-muted-foreground">
                     {dayHours.is_closed ? "Closed" : "Open"}
-                  </label>
+                  </Label>
                 </div>
                 {!dayHours.is_closed && (
                   <div className="flex flex-wrap items-center gap-2">

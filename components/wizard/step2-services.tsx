@@ -4,7 +4,7 @@ import type { FormEvent } from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Label } from "@/components/ui/label" // Corrected import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, PlusCircle, Trash2, CheckCircle2 } from "lucide-react"
 import { Textarea } from "../ui/textarea"
