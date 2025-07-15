@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         a.age,
         s.name as service_name,
         s.price as service_price,
-        s.duration as service_duration,
+        s.duration_minutes as service_duration,
         b.name as barber_name,
         a.created_at
       FROM appointments a
