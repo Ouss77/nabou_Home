@@ -11,9 +11,9 @@ export async function GET(request: NextRequest) {
     }
 
     const services = await sql`
-      SELECT id, name, price, duration_minutes, description, is_active
+      SELECT id, name, price, duration_minutes, description
       FROM services 
-      WHERE store_id = ${storeId} AND is_active = true
+      WHERE store_id = ${storeId} 
       ORDER BY name
     `
 
