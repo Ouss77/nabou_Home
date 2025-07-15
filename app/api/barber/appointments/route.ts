@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         a.client_name,
         a.client_email,
         a.client_phone,
-        a.client_age,
+        a.age,
         s.name as service_name,
         s.price as service_price,
         s.duration as service_duration,
