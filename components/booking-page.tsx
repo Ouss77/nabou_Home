@@ -23,6 +23,7 @@ import {
   Phone,
   MessageSquare,
   CheckCircle2,
+  XCircle,
   Timer,
 } from "lucide-react"
 import Image from "next/image"
@@ -90,7 +91,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
   const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]) // Changed from bookedTimes
+  const [bookedTimes, setBookedTimes] = useState<string[]>([])
   const [passedTimes, setPassedTimes] = useState<string[]>([])
   const [fetchingSlots, setFetchingSlots] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -100,6 +101,33 @@ export function BookingPage({ store, services }: BookingPageProps) {
 
   const prevSelectedDateRef = useRef<Date | null>(null)
   const lastFetchTimeRef = useRef<number>(0)
+
+  // Static time slots - moved outside to prevent recreation
+  const timeSlots = [
+    "09:00",
+    "09:30",
+    "10:00",
+    "10:30",
+    "11:00",
+    "11:30",
+    "12:00",
+    "12:30",
+    "13:00",
+    "13:30",
+    "14:00",
+    "14:30",
+    "15:00",
+    "15:30",
+    "16:00",
+    "16:30",
+    "17:00",
+    "17:30",
+    "18:00",
+    "18:30",
+    "19:00",
+    "19:30",
+    "20:00",
+  ]
 
   // Fetch store images
   useEffect(() => {
@@ -131,10 +159,10 @@ export function BookingPage({ store, services }: BookingPageProps) {
     return () => clearInterval(interval)
   }, [])
 
-  // Memoized function to fetch available slots
-  const fetchAvailableSlots = useCallback(async () => {
-    if (!selectedDate || !store.id || !selectedService) {
-      setAvailableSlots([])
+  // Memoized function to fetch booked times with better error handling
+  const fetchBookedTimes = useCallback(async () => {
+    if (!selectedDate || !store.id) {
+      setBookedTimes([])
       return
     }
 
@@ -149,7 +177,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
       const dateString = formatDateToString(selectedDate)
 
       if (process.env.NODE_ENV === "development") {
-        console.log("[FetchAvailableSlots] Fetching for date:", dateString)
+        console.log("[FetchBookedTimes] Fetching for date:", dateString)
       }
 
       const params = new URLSearchParams({
@@ -157,33 +185,34 @@ export function BookingPage({ store, services }: BookingPageProps) {
         date: dateString,
         timezone: getTimezoneName(),
         clientTime: currentTime.toISOString(),
-        serviceDuration: selectedService.duration_minutes.toString(), // Pass service duration
       })
 
       const response = await fetch(`/api/bookings/available-slots?${params}`)
 
+      // Check if response is ok before trying to parse JSON
       if (!response.ok) {
-        console.error("[FetchAvailableSlots] API returned error:", response.status, response.statusText)
-        setAvailableSlots([])
+        console.error("[FetchBookedTimes] API returned error:", response.status, response.statusText)
+        setBookedTimes([])
         return
       }
 
+      // Check content type to ensure it's JSON
       const contentType = response.headers.get("content-type")
       if (!contentType || !contentType.includes("application/json")) {
-        console.error("[FetchAvailableSlots] Response is not JSON:", contentType)
-        setAvailableSlots([])
+        console.error("[FetchBookedTimes] Response is not JSON:", contentType)
+        setBookedTimes([])
         return
       }
 
       const data = await response.json()
-      setAvailableSlots(data.availableSlots || []) // Use availableSlots from API
+      setBookedTimes(data.bookedTimes || [])
     } catch (err) {
-      console.error("[FetchAvailableSlots] Error fetching available slots:", err)
-      setAvailableSlots([])
+      console.error("[FetchBookedTimes] Error fetching booked times:", err)
+      setBookedTimes([])
     } finally {
       setFetchingSlots(false)
     }
-  }, [selectedDate, store.id, currentTime, selectedService]) // Added selectedService to dependencies
+  }, [selectedDate, store.id, currentTime])
 
   // Centralized effect to calculate and set passedTimes
   useEffect(() => {
@@ -196,27 +225,32 @@ export function BookingPage({ store, services }: BookingPageProps) {
     const todayString = getCurrentDateString()
     const comparison = compareDateStrings(dateString, todayString)
 
+    // Debug logging to help troubleshoot
+    if (process.env.NODE_ENV === "development") {
+      console.log("[PassedTimesEffect] Date comparison:", {
+        selectedDate: dateString,
+        today: todayString,
+        comparison,
+        isToday: comparison === 0,
+        isFuture: comparison > 0,
+        isPast: comparison < 0,
+      })
+    }
+
     let newPassedTimes: string[] = []
     if (comparison > 0) {
+      // Future date (including tomorrow)
       newPassedTimes = []
     } else if (comparison < 0) {
-      // If it's a past date, all slots are "passed"
-      // We need a list of all possible slots to mark them as passed
-      // For now, let's assume a fixed set of all possible slots for this logic
-      const allPossibleSlots = Array.from({ length: (20 - 9) * 2 + 1 }, (_, i) => {
-        // 9:00 to 20:00 in 30 min intervals
-        const hour = Math.floor(9 + i / 2)
-        const minute = (i % 2) * 30
-        return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
-      })
-      newPassedTimes = allPossibleSlots
+      // Past date
+      newPassedTimes = [...timeSlots]
     } else {
       // Today
-      newPassedTimes = getPassedTimeSlots(dateString, availableSlots.length > 0 ? availableSlots : []) // Pass availableSlots or an empty array
+      newPassedTimes = getPassedTimeSlots(dateString, timeSlots)
     }
 
     setPassedTimes(newPassedTimes)
-  }, [selectedDate, currentTime, availableSlots]) // Added availableSlots to dependencies
+  }, [selectedDate, currentTime]) // Removed timeSlots from dependencies
 
   // Effect to clear selectedTime if it becomes passed
   useEffect(() => {
@@ -225,21 +259,27 @@ export function BookingPage({ store, services }: BookingPageProps) {
     }
   }, [selectedTime, passedTimes])
 
-  // Effect for when selectedDate or selectedService changes
+  // Effect to clear selectedTime if it becomes booked
+  useEffect(() => {
+    if (selectedTime && bookedTimes.includes(selectedTime)) {
+      setSelectedTime("")
+    }
+  }, [selectedTime, bookedTimes])
+
+  // Effect for when selectedDate changes
   useEffect(() => {
     const hasDateChanged = prevSelectedDateRef.current?.getTime() !== selectedDate?.getTime()
 
-    if (hasDateChanged || !prevSelectedDateRef.current || selectedService) {
-      // Trigger fetch if service changes
+    if (hasDateChanged || !prevSelectedDateRef.current) {
       if (process.env.NODE_ENV === "development") {
         debugDateInfo(selectedDate)
       }
 
       prevSelectedDateRef.current = selectedDate
-      setSelectedTime("") // Clear selected time when date or service changes
-      fetchAvailableSlots()
+      setSelectedTime("") // Clear selected time when date changes
+      fetchBookedTimes()
     }
-  }, [selectedDate, selectedService, fetchAvailableSlots])
+  }, [selectedDate, fetchBookedTimes])
 
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -257,15 +297,14 @@ export function BookingPage({ store, services }: BookingPageProps) {
       return
     }
 
-    // Re-check if selected time is still available (not passed)
-    if (passedTimes.includes(selectedTime)) {
-      setError(t.booking.alreadyPassed)
+    // Re-check if selected time is booked or passed
+    if (bookedTimes.includes(selectedTime)) {
+      setError(t.booking.noLongerAvailable)
+      fetchBookedTimes()
       return
     }
-    // Re-check if selected time is still available (not booked/blocked by API)
-    if (!availableSlots.includes(selectedTime)) {
-      setError(t.booking.noLongerAvailable)
-      fetchAvailableSlots() // Re-fetch to get updated slots
+    if (passedTimes.includes(selectedTime)) {
+      setError(t.booking.alreadyPassed)
       return
     }
 
@@ -296,10 +335,10 @@ export function BookingPage({ store, services }: BookingPageProps) {
       if (!response.ok) {
         if (response.status === 409 || (data.error && data.error.toLowerCase().includes("booked"))) {
           setError(data.error || t.booking.justBooked)
-          fetchAvailableSlots()
+          fetchBookedTimes()
         } else if (response.status === 400 && data.error && data.error.toLowerCase().includes("past")) {
           setError(data.error || t.booking.cannotBookPast)
-          fetchAvailableSlots()
+          fetchBookedTimes()
         } else {
           throw new Error(data.error || t.booking.failedToBook)
         }
@@ -347,11 +386,10 @@ export function BookingPage({ store, services }: BookingPageProps) {
 
     for (let day = 1; day <= daysInMonthCount; day++) {
       const currentDateObj = new Date(year, month, day)
-      // Only allow selection of current or future dates
       if (!isDateInPast(currentDateObj)) {
         daysArray.push(currentDateObj)
       } else {
-        daysArray.push(null) // Mark past dates as unselectable
+        daysArray.push(null)
       }
     }
     return daysArray
@@ -543,6 +581,7 @@ export function BookingPage({ store, services }: BookingPageProps) {
                     <div className="flex items-center gap-2 text-blue-800 text-sm">
                       <Timer className="h-4 w-4" />
                       <span className="font-medium">
+                        {t.booking.currentTime}:{" "}
                         {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} (
                         {getTimezoneName()})
                       </span>
@@ -677,84 +716,83 @@ export function BookingPage({ store, services }: BookingPageProps) {
                   </div>
 
                   {/* Enhanced Time Slot Selection */}
-                  {selectedDate &&
-                    selectedService && ( // Only show time slots if service is selected
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-base font-semibold text-slate-700 flex items-center gap-2">
-                            <Clock className="h-4 w-4" />
-                            {t.booking.selectTime}
-                          </Label>
-                          {fetchingSlots && (
-                            <div className="flex items-center gap-2 text-sm text-blue-600">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              <span className="font-medium">{t.booking.checking}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                          {availableSlots.length > 0 ? (
-                            availableSlots.map((time) => {
-                              const isPassed = passedTimes.includes(time)
-                              const isSelected = selectedTime === time
-                              const isDisabled = isPassed || fetchingSlots
-
-                              return (
-                                <Button
-                                  key={time}
-                                  type="button"
-                                  onClick={() => !isDisabled && setSelectedTime(time)}
-                                  disabled={isDisabled}
-                                  className={`h-12 text-sm font-medium transition-all duration-200 ${
-                                    isSelected
-                                      ? "bg-blue-500 hover:bg-blue-600 text-white shadow-lg scale-105 ring-2 ring-blue-300"
-                                      : isPassed
-                                        ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50"
-                                        : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 hover:scale-105"
-                                  }`}
-                                  variant={isSelected ? "default" : "outline"}
-                                >
-                                  <div className="flex flex-col items-center gap-1">
-                                    <span>{time}</span>
-                                    <div className="flex">{isPassed && <Timer className="h-3 w-3" />} </div>
-
-                                    {!isDisabled && !isSelected && (
-                                      <CheckCircle2 className="h-3 w-3 opacity-0 group-hover:opacity-100" />
-                                    )}
-                                  </div>
-                                </Button>
-                              )
-                            })
-                          ) : (
-                            <p className="col-span-full text-center text-muted-foreground">
-                              No available slots for this date or service.
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Enhanced Legend */}
-                        <div className="bg-slate-50 rounded-lg p-4 space-y-2">
-                          <div className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">
-                            Time Slot Legend
+                  {selectedDate && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold text-slate-700 flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          {t.booking.selectTime}
+                        </Label>
+                        {fetchingSlots && (
+                          <div className="flex items-center gap-2 text-sm text-blue-600">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="font-medium">{t.booking.checking}</span>
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 bg-white border border-slate-200 rounded"></div>
-                              <span className="text-slate-600">Available</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 bg-red-100 border border-red-200 rounded"></div>
-                              <span className="text-slate-600">Booked (Not shown by API)</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 bg-gray-100 border border-gray-200 rounded"></div>
-                              <span className="text-slate-600">Past Time</span>
-                            </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                        {timeSlots.map((time) => {
+                          const isBooked = bookedTimes.includes(time)
+                          const isPassed = passedTimes.includes(time)
+                          const isSelected = selectedTime === time
+                          const isDisabled = isBooked || isPassed || fetchingSlots
+
+                          return (
+                            <Button
+                              key={time}
+                              type="button"
+                              onClick={() => !isDisabled && setSelectedTime(time)}
+                              disabled={isDisabled}
+                              className={`h-12 text-sm font-medium transition-all duration-200 ${
+                                isSelected
+                                  ? "bg-blue-500 hover:bg-blue-600 text-white shadow-lg scale-105 ring-2 ring-blue-300"
+                                  : isBooked
+                                    ? "bg-red-100 text-red-600 border-red-200 cursor-not-allowed opacity-60"
+                                    : isPassed
+                                      ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50"
+                                      : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 hover:scale-105"
+                              }`}
+                              variant={isSelected ? "default" : "outline"}
+                            >
+                              <div className="flex flex-col items-center gap-1">
+                                <span>{time}</span>
+                                <div className="flex">
+                                  {isBooked && <XCircle className="h-3 w-3" />}
+                                  {isPassed && <Timer className="h-3 w-3" />}{" "}
+                                </div>
+
+                                {!isDisabled && !isSelected && (
+                                  <CheckCircle2 className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                                )}
+                              </div>
+                            </Button>
+                          )
+                        })}
+                      </div>
+
+                      {/* Enhanced Legend */}
+                      <div className="bg-slate-50 rounded-lg p-4 space-y-2">
+                        <div className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">
+                          Time Slot Legend
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 bg-white border border-slate-200 rounded"></div>
+                            <span className="text-slate-600">Available</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 bg-red-100 border border-red-200 rounded"></div>
+                            <span className="text-slate-600">Booked</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 bg-gray-100 border border-gray-200 rounded"></div>
+                            <span className="text-slate-600">Past Time</span>
                           </div>
                         </div>
                       </div>
-                    )}
+                    </div>
+                  )}
 
                   {/* Enhanced Contact Information Form */}
                   <div className="space-y-4">
@@ -883,3 +921,5 @@ export function BookingPage({ store, services }: BookingPageProps) {
     </div>
   )
 }
+
+// Export as named export to fix the deployment error

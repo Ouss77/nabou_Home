@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label" // Corrected import
+import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Eye, EyeOff, CheckCircle, User, Mail, Lock, Phone, MapPin } from "lucide-react"
@@ -220,13 +220,7 @@ export function BarberRegistrationForm({ onSuccess, onCancel }: RegistrationForm
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              className="flex-1 bg-transparent"
-              disabled={loading}
-            >
+            <Button type="button" variant="outline" onClick={onCancel} className="flex-1" disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700" disabled={loading || !isFormValid()}>

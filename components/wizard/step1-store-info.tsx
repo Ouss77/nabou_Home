@@ -1,81 +1,45 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
+import type { FormEvent } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label" // Corrected import
+import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import type { Store } from "@/lib/db"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
-import { createStore, updateStore, type Store } from "@/lib/db" // Import Store type
 
 interface Step1StoreInfoProps {
-  barberId: string
-  onNext: (data: { id: string; title: string; address: string; description: string; imageUrl?: string }) => void
-  initialData?: Store | null
-  isEditing: boolean
+  store: Store | null
+  onSave: (data: Partial<Store>) => void
 }
 
-export function Step1StoreInfo({ barberId, onNext, initialData, isEditing }: Step1StoreInfoProps) {
-  const [storeName, setStoreName] = useState(initialData?.title || "")
-  const [address, setAddress] = useState(initialData?.address || "")
-  const [description, setDescription] = useState(initialData?.description || "")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+export function Step1StoreInfo({ store, onSave }: Step1StoreInfoProps) {
+  const [title, setTitle] = useState(store?.title || "")
+  const [address, setAddress] = useState(store?.address || "")
+  const [description, setDescription] = useState(store?.description || "")
 
-  useEffect(() => {
-    if (initialData) {
-      setStoreName(initialData.title || "")
-      setAddress(initialData.address || "")
-      setDescription(initialData.description || "")
-    }
-  }, [initialData])
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    setError(null)
-    setIsLoading(true)
-
-    if (!storeName || !address || !description) {
-      setError("All fields are required.")
-      setIsLoading(false)
-      return
-    }
-
-    try {
-      let store: Store
-      if (isEditing && initialData?.id) {
-        store = await updateStore(initialData.id, storeName, address, description)
-      } else {
-        store = await createStore(barberId, storeName, address, description)
-      }
-      onNext(store)
-    } catch (err) {
-      console.error("Failed to save store info:", err)
-      setError("Failed to save store information. Please try again.")
-    } finally {
-      setIsLoading(false)
-    }
+    onSave({ title, address, description })
   }
 
   return (
     <form onSubmit={handleSubmit}>
       <Card>
         <CardHeader>
-          <CardTitle>{isEditing ? "Edit Store Information" : "Store Information"}</CardTitle>
-          <CardDescription>Tell us about your business.</CardDescription>
+          <CardTitle>Store Information</CardTitle>
+          <CardDescription>Let's start with the basics. You can always change this later.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="storeName">Store Name</Label>
+            <Label htmlFor="title">Store Name</Label>
             <Input
-              id="storeName"
-              value={storeName}
-              onChange={(e) => setStoreName(e.target.value)}
-              placeholder="e.g., The Barber's Den"
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               required
+              placeholder="e.g., The Sharp Cut"
             />
           </div>
           <div className="space-y-2">
@@ -84,8 +48,8 @@ export function Step1StoreInfo({ barberId, onNext, initialData, isEditing }: Ste
               id="address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="e.g., 123 Main St, Anytown, USA"
               required
+              placeholder="e.g., 123 Main St, Anytown, USA"
             />
           </div>
           <div className="space-y-2">
@@ -94,19 +58,15 @@ export function Step1StoreInfo({ barberId, onNext, initialData, isEditing }: Ste
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="A brief description of your store and services."
-              rows={4}
               required
+              placeholder="Tell your customers about your store."
+              rows={4}
             />
           </div>
-          {error && <p className="text-sm text-red-500">{error}</p>}
         </CardContent>
       </Card>
       <div className="mt-6 flex justify-end">
-        <Button type="submit" disabled={isLoading}>
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Next
-        </Button>
+        <Button type="submit">Next</Button>
       </div>
     </form>
   )

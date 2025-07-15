@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label" // Corrected import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Clock } from "lucide-react"
 
@@ -42,21 +41,8 @@ export function Step3WorkingHours({ storeId, onNext, onBack }: Step3WorkingHours
         if (response.ok) {
           const data = await response.json()
           if (data.workingHours && data.workingHours.length > 0) {
-            // Ensure all 7 days are present, fill with defaults if not
-            const fetchedHoursMap = new Map(data.workingHours.map((wh: any) => [wh.day_of_week, wh]))
-            const mergedHours = DEFAULT_WORKING_HOURS.map((defaultWh) =>
-              fetchedHoursMap.has(defaultWh.day_of_week)
-                ? {
-                    ...fetchedHoursMap.get(defaultWh.day_of_week),
-                    start_time: fetchedHoursMap.get(defaultWh.day_of_week).start_time.substring(0, 5), // Ensure HH:MM
-                    end_time: fetchedHoursMap.get(defaultWh.day_of_week).end_time.substring(0, 5), // Ensure HH:MM
-                  }
-                : defaultWh,
-            )
-            setWorkingHours(mergedHours)
+            setWorkingHours(data.workingHours)
           }
-        } else {
-          console.error("Failed to fetch working hours:", response.statusText)
         }
       } catch (error) {
         console.error("Failed to fetch working hours", error)
@@ -120,9 +106,9 @@ export function Step3WorkingHours({ storeId, onNext, onBack }: Step3WorkingHours
                     checked={!dayHours.is_closed}
                     onCheckedChange={(checked) => handleUpdate(index, "is_closed", !checked)}
                   />
-                  <Label htmlFor={`closed-${index}`} className="text-sm text-muted-foreground">
+                  <label htmlFor={`closed-${index}`} className="text-sm text-muted-foreground">
                     {dayHours.is_closed ? "Closed" : "Open"}
-                  </Label>
+                  </label>
                 </div>
                 {!dayHours.is_closed && (
                   <div className="flex flex-wrap items-center gap-2">

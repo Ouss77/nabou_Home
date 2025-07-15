@@ -1,23 +1,38 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getAvailableTimeSlots } from "@/lib/db"
+import { neon } from "@neondatabase/serverless"
+
+const sql = neon(process.env.DATABASE_URL!)
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const storeId = searchParams.get("storeId")
     const date = searchParams.get("date")
-    const serviceDuration = searchParams.get("serviceDuration")
+    const timezone = searchParams.get("timezone") || "UTC"
+    const clientTime = searchParams.get("clientTime")
 
     if (!storeId || !date) {
       return NextResponse.json({ error: "Store ID and date are required" }, { status: 400 })
     }
 
-    const duration = serviceDuration ? Number.parseInt(serviceDuration, 10) : 30 // Default to 30 if not provided
+    // Get all bookings for the specified date and store
+    const bookings = await sql`
+      SELECT appointment_time 
+      FROM appointments 
+      WHERE store_id = ${storeId} 
+      AND DATE(appointment_date) = ${date}
+      AND status != 'cancelled'
+    `
 
-    const availableSlots = await getAvailableTimeSlots(storeId, date, duration)
+    // Extract booked time slots
+    const bookedTimes = bookings.map((booking) => {
+      const time = new Date(booking.appointment_time)
+      return time.toTimeString().slice(0, 5) // Format as HH:MM
+    })
 
     return NextResponse.json({
-      availableSlots,
+      bookedTimes,
+      availableSlots: [], // This would be calculated based on working hours
       success: true,
     })
   } catch (error) {
