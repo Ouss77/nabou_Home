@@ -32,7 +32,6 @@ export async function GET(request: NextRequest) {
         a.created_at
       FROM appointments a
       JOIN services s ON a.service_id = s.id
-      JOIN barbers b ON a.barber_id = b.id
       WHERE s.store_id = ${storeId}
         AND a.appointment_date >= ${startDate.toISOString().split("T")[0]}
       ORDER BY a.appointment_date DESC, a.appointment_time DESC
