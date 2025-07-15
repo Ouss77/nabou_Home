@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     }
 
     const services = await sql`
-      SELECT id, name, price, duration, description, is_active
+      SELECT id, name, price, duration_minutes, description, is_active
       FROM services 
       WHERE store_id = ${storeId} AND is_active = true
       ORDER BY name
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     const result = await sql`
       INSERT INTO services (store_id, name, price, duration_minutes, description, is_active)
-      VALUES (${storeId}, ${name}, ${price}, ${duration}, ${description || ""}, true)
+      VALUES (${storeId}, ${name}, ${price}, ${duration_minutes}, ${description || ""}, true)
       RETURNING *
     `
 
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { id, name, price, duration, description, is_active } = await request.json()
+    const { id, name, price, duration_minutes, description, is_active } = await request.json()
 
     if (!id) {
       return NextResponse.json({ error: "Service ID is required" }, { status: 400 })
@@ -69,7 +69,7 @@ export async function PUT(request: NextRequest) {
 
     const result = await sql`
       UPDATE services 
-      SET name = ${name}, price = ${price}, duration_minutes = ${duration}, 
+      SET name = ${name}, price = ${price}, duration_minutes = ${duration_minutes}, 
           description = ${description}, is_active = ${is_active}
       WHERE id = ${id}
       RETURNING *
