@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     // Get all bookings for the specified date and store
     const bookings = await sql`
       SELECT appointment_time 
-      FROM bookings 
+      FROM appointments 
       WHERE store_id = ${storeId} 
       AND DATE(appointment_date) = ${date}
       AND status != 'cancelled'
