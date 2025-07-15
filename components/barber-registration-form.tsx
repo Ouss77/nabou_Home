@@ -220,7 +220,13 @@ export function BarberRegistrationForm({ onSuccess, onCancel }: RegistrationForm
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={onCancel} className="flex-1" disabled={loading}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              className="flex-1 bg-transparent"
+              disabled={loading}
+            >
               Cancel
             </Button>
             <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700" disabled={loading || !isFormValid()}>
