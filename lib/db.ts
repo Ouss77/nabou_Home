@@ -775,7 +775,10 @@ export async function getAvailableTimeSlots(storeId: string, date: string, servi
     `
 
     // Get blocked times for the date
-    const blockedTimes = await getBlockedTimesByStoreIdAndDate(storeId, date)
+    const blockedTimes = await sql`
+      SELECT * FROM blocked_times 
+      WHERE store_id = ${storeId} AND blocked_date = ${date}
+    `
 
     // Generate all possible time slots
     const startTime = timeToMinutes(workingHours.start_time)

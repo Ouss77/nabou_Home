@@ -41,8 +41,21 @@ export function Step3WorkingHours({ storeId, onNext, onBack }: Step3WorkingHours
         if (response.ok) {
           const data = await response.json()
           if (data.workingHours && data.workingHours.length > 0) {
-            setWorkingHours(data.workingHours)
+            // Ensure all 7 days are present, fill with defaults if not
+            const fetchedHoursMap = new Map(data.workingHours.map((wh: any) => [wh.day_of_week, wh]))
+            const mergedHours = DEFAULT_WORKING_HOURS.map((defaultWh) =>
+              fetchedHoursMap.has(defaultWh.day_of_week)
+                ? {
+                    ...fetchedHoursMap.get(defaultWh.day_of_week),
+                    start_time: fetchedHoursMap.get(defaultWh.day_of_week).start_time.substring(0, 5), // Ensure HH:MM
+                    end_time: fetchedHoursMap.get(defaultWh.day_of_week).end_time.substring(0, 5), // Ensure HH:MM
+                  }
+                : defaultWh,
+            )
+            setWorkingHours(mergedHours)
           }
+        } else {
+          console.error("Failed to fetch working hours:", response.statusText)
         }
       } catch (error) {
         console.error("Failed to fetch working hours", error)

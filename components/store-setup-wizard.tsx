@@ -1,120 +1,104 @@
 "use client"
 
-import type { Dispatch, SetStateAction } from "react"
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Loader2 } from "lucide-react"
-import { StepIndicator } from "./wizard/step-indicator"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Progress } from "@/components/ui/progress"
 import { Step1StoreInfo } from "./wizard/step1-store-info"
 import { Step2Services } from "./wizard/step2-services"
 import { Step3WorkingHours } from "./wizard/step3-working-hours"
 import { Step4Images } from "./wizard/step4-images"
 import { Step5Confirmation } from "./wizard/step5-confirmation"
-import type { Store } from "@/lib/db"
+import { StepIndicator } from "./wizard/step-indicator"
+import type { Store } from "@/lib/db" // Import Store type
 
 interface StoreSetupWizardProps {
-  open: boolean
-  onOpenChange: Dispatch<SetStateAction<boolean>>
-  store: Store | null
-  onSuccess: (store: Store) => void // Modified onSuccess to pass the updated store
+  barberId: string
+  isOpen: boolean
+  onOpenChange: (open: boolean) => void
+  onStoreCreated: (store: Store) => void
+  initialStore?: Store | null
 }
 
-const WIZARD_STEPS = ["Store Info", "Services", "Working Hours", "Images"]
-
-export function StoreSetupWizard({ open, onOpenChange, store: initialStore, onSuccess }: StoreSetupWizardProps) {
+export function StoreSetupWizard({
+  barberId,
+  isOpen,
+  onOpenChange,
+  onStoreCreated,
+  initialStore,
+}: StoreSetupWizardProps) {
   const [currentStep, setCurrentStep] = useState(1)
-  const [store, setStore] = useState<Store | null>(initialStore)
-  const [isLoading, setIsLoading] = useState(false)
+  const [storeData, setStoreData] = useState<Partial<Store>>({})
+  const [createdStore, setCreatedStore] = useState<Store | null>(null)
 
-  // Reset state when dialog is closed or the initial store changes
   useEffect(() => {
-    if (open) {
-      setStore(initialStore)
-      setCurrentStep(1)
+    if (initialStore) {
+      setStoreData(initialStore)
+    } else {
+      setStoreData({}) // Clear data if no initial store
     }
-  }, [open, initialStore])
+    setCurrentStep(1) // Always start at step 1 when opened
+    setCreatedStore(null) // Clear created store on open
+  }, [isOpen, initialStore])
 
-  const handleNext = () => setCurrentStep((prev) => Math.min(prev + 1, WIZARD_STEPS.length + 1))
-  const handleBack = () => setCurrentStep((prev) => Math.max(prev - 1, 1))
+  const totalSteps = 5
 
-  const handleStoreSave = async (data: Partial<Store>) => {
-    setIsLoading(true)
-    try {
-      const url = store ? `/api/barber/store/${store.id}` : "/api/barber/store"
-      const method = store ? "PUT" : "POST"
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      })
-
-      const result = await response.json()
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to save store information.")
-      }
-
-      setStore(result.store)
-      handleNext()
-    } catch (error) {
-      console.error(error)
-      // You can add an error state here to show the user
-    } finally {
-      setIsLoading(false)
+  const handleNext = (data: any) => {
+    setStoreData((prev) => ({ ...prev, ...data }))
+    if (currentStep < totalSteps) {
+      setCurrentStep((prev) => prev + 1)
     }
   }
 
-  const handleFinish = () => {
-    setCurrentStep(5) // Go to confirmation step
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep((prev) => prev - 1)
+    }
   }
 
-  const handleCloseAndRefresh = () => {
-    if (store) {
-      onSuccess(store) // Pass the updated store to the parent
-    }
+  const handleFinish = (store: Store) => {
+    setCreatedStore(store)
+    onStoreCreated(store)
+    setCurrentStep(totalSteps) // Move to confirmation step
+  }
+
+  const handleClose = () => {
     onOpenChange(false)
-  }
-
-  const renderStepContent = () => {
-    if (isLoading) {
-      return (
-        <div className="flex h-full min-h-[300px] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      )
-    }
-
-    switch (currentStep) {
-      case 1:
-        return <Step1StoreInfo store={store} onSave={handleStoreSave} />
-      case 2:
-        return store ? <Step2Services storeId={store.id} onNext={handleNext} onBack={handleBack} /> : null
-      case 3:
-        return store ? <Step3WorkingHours storeId={store.id} onNext={handleNext} onBack={handleBack} /> : null
-      case 4:
-        return store ? <Step4Images storeId={store.id} onFinish={handleFinish} onBack={handleBack} /> : null
-      case 5:
-        return store ? <Step5Confirmation store={store} onClose={handleCloseAndRefresh} /> : null
-      default:
-        return <div>Step not found</div>
-    }
+    // Reset wizard state when closed
+    setCurrentStep(1)
+    setStoreData({})
+    setCreatedStore(null)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-full max-h-[90vh] w-full max-w-4xl flex-col">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-3xl p-6">
         <DialogHeader>
-          <DialogTitle>{initialStore ? "Edit Your Store" : "Create Your Store"}</DialogTitle>
-          <DialogDescription>Follow the steps to get your store ready for customers.</DialogDescription>
+          <DialogTitle className="text-2xl font-bold">
+            {initialStore ? "Edit Your Store" : "Set Up Your Store"}
+          </DialogTitle>
+          <Progress value={(currentStep / totalSteps) * 100} className="mt-4 h-2" />
+          <StepIndicator currentStep={currentStep} totalSteps={totalSteps} />
         </DialogHeader>
-
-        {currentStep <= WIZARD_STEPS.length && (
-          <div className="px-6 py-4">
-            <StepIndicator steps={WIZARD_STEPS} currentStep={currentStep} />
-          </div>
-        )}
-
-        <div className="flex-grow overflow-y-auto px-6 pb-6">{renderStepContent()}</div>
+        <div className="py-4">
+          {currentStep === 1 && (
+            <Step1StoreInfo
+              barberId={barberId}
+              initialData={storeData as Store}
+              onNext={handleNext}
+              isEditing={!!initialStore}
+            />
+          )}
+          {currentStep === 2 && storeData.id && (
+            <Step2Services storeId={storeData.id} onNext={handleNext} onBack={handleBack} />
+          )}
+          {currentStep === 3 && storeData.id && (
+            <Step3WorkingHours storeId={storeData.id} onNext={handleNext} onBack={handleBack} />
+          )}
+          {currentStep === 4 && storeData.id && (
+            <Step4Images storeId={storeData.id} onFinish={handleFinish} onBack={handleBack} />
+          )}
+          {currentStep === 5 && createdStore && <Step5Confirmation store={createdStore} onClose={handleClose} />}
+        </div>
       </DialogContent>
     </Dialog>
   )
