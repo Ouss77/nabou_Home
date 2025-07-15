@@ -40,9 +40,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Store ID is required" }, { status: 400 })
     }
 
-    const { name, price, duration, description } = await request.json()
+    const { name, price, duration_minutes, description } = await request.json()
 
-    if (!name || !price || !duration) {
+    if (!name || !price || !duration_minutes) {
       return NextResponse.json({ error: "Name, price, and duration are required" }, { status: 400 })
     }
 
