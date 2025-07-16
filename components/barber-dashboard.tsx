@@ -123,6 +123,8 @@ export function BarberDashboard({
   const { t, language } = useLanguage()
   const { toast } = useToast()
   const [showStoreSetup, setShowStoreSetup] = useState(false)
+  const [showStoreSetupWizard, setShowStoreSetupWizard] = useState(false)
+
   const [showServiceManagement, setShowServiceManagement] = useState(false)
   const [showBlockTime, setShowBlockTime] = useState(false)
   const [blockedTimes, setBlockedTimes] = useState<BlockedTime[]>([])
@@ -381,10 +383,12 @@ export function BarberDashboard({
             <p className="text-slate-600 mb-6">
               {t.barberDashboard?.createProfile || "Create your barber profile to start accepting appointments"}
             </p>
-            <Button onClick={() => setShowStoreSetup(true)} size="lg">
-              <Plus className="h-4 w-4 mr-2" />
-              {t.barberDashboard?.createStore || "Create Store"}
-            </Button>
+
+            <Button onClick={() => setShowStoreSetupWizard(true)} size="lg">
+  <Plus className="h-4 w-4 mr-2" />
+  {t.barberDashboard?.createStore || "Create Store"}
+</Button>
+
           </div>
         ) : (
           <>
