@@ -827,3 +827,113 @@ export async function getAvailableTimeSlots(storeId: string, date: string, servi
     return []
   }
 }
+
+export async function getAppointmentsByStoreIdAndDate(storeId: string, date: string) {
+  const result = await sql`
+    SELECT a.appointment_time, s.duration_minutes
+    FROM appointments a
+    JOIN services s ON a.service_id = s.id
+    WHERE a.store_id = ${storeId} 
+    AND a.appointment_date = ${date} 
+    AND a.status IN ('pending', 'confirmed')
+    ORDER BY a.appointment_time
+  `
+  return result
+}
+// Get all booked time slots for a specific date (including overlapping times and blocked times)
+export async function getBookedTimeSlots(storeId: string, date: string): Promise<string[]> {
+  const appointments = await getAppointmentsByStoreIdAndDate(storeId, date)
+  const blockedTimes = await getBlockedTimesByStoreIdAndDate(storeId, date)
+  const workingHours = await getWorkingHoursForDate(storeId, date)
+  const bookedSlots = new Set<string>()
+
+  // Standard time slots (every 30 minutes from 9:00 to 17:30)
+  const timeSlots = [
+    "09:00",
+    "09:30",
+    "10:00",
+    "10:30",
+    "11:00",
+    "11:30",
+    "12:00",
+    "12:30",
+    "13:00",
+    "13:30",
+    "14:00",
+    "14:30",
+    "15:00",
+    "15:30",
+    "16:00",
+    "16:30",
+    "17:00",
+    "17:30",
+    "18:00",
+    "18:30",
+    "19:00",
+    "19:30",
+    "20:00",
+  ]
+
+  // If store is explicitly closed on this day, mark all slots as booked
+  if (workingHours && workingHours.is_closed) {
+    return [...timeSlots]
+  }
+
+  // Use working hours if available, otherwise default to 9:00-18:00
+  let workingStartMinutes = 9 * 60 // 9:00 AM
+  let workingEndMinutes = 18 * 60 // 6:00 PM
+
+  if (workingHours && !workingHours.is_closed) {
+    workingStartMinutes = timeToMinutes(workingHours.start_time)
+    workingEndMinutes = timeToMinutes(workingHours.end_time)
+  }
+
+  // Mark slots outside working hours as booked
+  for (const slot of timeSlots) {
+    const slotMinutes = timeToMinutes(slot)
+    if (slotMinutes < workingStartMinutes || slotMinutes >= workingEndMinutes) {
+      bookedSlots.add(slot)
+    }
+  }
+
+  // Mark slots blocked by appointments
+  for (const appointment of appointments) {
+    const [hours, minutes] = appointment.appointment_time.split(":").map(Number)
+    const startMinutes = hours * 60 + minutes
+    const endMinutes = startMinutes + appointment.duration_minutes
+
+    // Mark all time slots that overlap with this appointment as booked
+    for (const slot of timeSlots) {
+      const [slotHours, slotMinutes] = slot.split(":").map(Number)
+      const slotStart = slotHours * 60 + slotMinutes
+      const slotEnd = slotStart + 30 // Each slot is 30 minutes
+
+      // Check if this slot overlaps with the appointment
+      if (slotStart < endMinutes && slotEnd > startMinutes) {
+        bookedSlots.add(slot)
+      }
+    }
+  }
+
+  // Mark slots blocked by blocked times
+  for (const blockedTime of blockedTimes) {
+    const [startHours, startMinutes] = blockedTime.start_time.split(":").map(Number)
+    const [endHours, endMinutes] = blockedTime.end_time.split(":").map(Number)
+    const blockedStartMinutes = startHours * 60 + startMinutes
+    const blockedEndMinutes = endHours * 60 + endMinutes
+
+    // Mark all time slots that overlap with this blocked time as booked
+    for (const slot of timeSlots) {
+      const [slotHours, slotMinutes] = slot.split(":").map(Number)
+      const slotStart = slotHours * 60 + slotMinutes
+      const slotEnd = slotStart + 30 // Each slot is 30 minutes
+
+      // Check if this slot overlaps with the blocked time
+      if (slotStart < blockedEndMinutes && slotEnd > blockedStartMinutes) {
+        bookedSlots.add(slot)
+      }
+    }
+  }
+
+  return Array.from(bookedSlots)
+}
