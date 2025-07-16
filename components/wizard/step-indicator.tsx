@@ -1,9 +1,3 @@
-"use client"
-
-import type React from "react"
-
-import { cn } from "@/lib/utils"
-
 interface StepIndicatorProps {
   steps: string[]
   currentStep: number
@@ -12,53 +6,42 @@ interface StepIndicatorProps {
 export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
   return (
     <div className="flex items-center justify-between">
-      {steps.map((step, index) => (
-        <div key={step} className="flex flex-col items-center">
-          <div
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-full border-2",
-              currentStep > index + 1
-                ? "border-primary bg-primary text-primary-foreground"
-                : currentStep === index + 1
-                  ? "border-primary text-primary"
-                  : "border-muted-foreground text-muted-foreground",
-            )}
-          >
-            {currentStep > index + 1 ? (
-              <CheckIcon className="h-4 w-4" />
-            ) : (
-              <span className="text-sm font-medium">{index + 1}</span>
+      {steps.map((step, index) => {
+        const stepNumber = index + 1
+        const isActive = stepNumber === currentStep
+        const isCompleted = stepNumber < currentStep
+
+        return (
+          <div key={step} className="flex items-center">
+            <div className="flex items-center">
+              <div
+                className={`
+                  flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium
+                  ${
+                    isCompleted
+                      ? "bg-primary text-primary-foreground"
+                      : isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
+                  }
+                `}
+              >
+                {isCompleted ? "✓" : stepNumber}
+              </div>
+              <span
+                className={`ml-2 text-sm font-medium ${
+                  isActive ? "text-primary" : isCompleted ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                {step}
+              </span>
+            </div>
+            {index < steps.length - 1 && (
+              <div className={`mx-4 h-0.5 w-12 ${isCompleted ? "bg-primary" : "bg-muted"}`} />
             )}
           </div>
-          <p
-            className={cn(
-              "mt-2 text-center text-sm",
-              currentStep >= index + 1 ? "font-medium text-foreground" : "text-muted-foreground",
-            )}
-          >
-            {step}
-          </p>
-        </div>
-      ))}
+        )
+      })}
     </div>
-  )
-}
-
-function CheckIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
   )
 }

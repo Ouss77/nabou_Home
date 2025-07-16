@@ -1,11 +1,19 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, ImageIcon } from "lucide-react"
-import { ImageUpload } from "../image-upload"
-import type { StoreImage } from "@/lib/db"
+import { ImageIcon, Upload, X } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+
+interface StoreImage {
+  id: string
+  image_data: string
+  image_name: string
+  is_primary: boolean
+}
 
 interface Step4ImagesProps {
   storeId: string
@@ -15,10 +23,14 @@ interface Step4ImagesProps {
 
 export function Step4Images({ storeId, onFinish, onBack }: Step4ImagesProps) {
   const [images, setImages] = useState<StoreImage[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isUploading, setIsUploading] = useState(false)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    fetchImages()
+  }, [storeId])
 
   const fetchImages = async () => {
-    setIsLoading(true)
     try {
       const response = await fetch(`/api/barber/store-images?storeId=${storeId}`)
       if (response.ok) {
@@ -26,45 +38,179 @@ export function Step4Images({ storeId, onFinish, onBack }: Step4ImagesProps) {
         setImages(data.images || [])
       }
     } catch (error) {
-      console.error("Failed to fetch images", error)
-    } finally {
-      setIsLoading(false)
+      console.error("Failed to fetch images:", error)
     }
   }
 
-  useEffect(() => {
-    fetchImages()
-  }, [storeId])
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
 
-  if (isLoading) {
-    return (
-      <div className="flex h-full min-h-[300px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
+    setIsUploading(true)
+
+    for (const file of Array.from(files)) {
+      if (file.size > 5 * 1024 * 1024) {
+        // 5MB limit
+        toast({
+          title: "File Too Large",
+          description: `${file.name} is too large. Please choose files under 5MB.`,
+          variant: "destructive",
+        })
+        continue
+      }
+
+      try {
+        const reader = new FileReader()
+        reader.onload = async (e) => {
+          const imageData = e.target?.result as string
+
+          const response = await fetch("/api/barber/store-images", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              storeId,
+              imageData,
+              imageName: file.name,
+              imageType: file.type,
+              imageSize: file.size,
+              isPrimary: images.length === 0, // First image is primary
+            }),
+          })
+
+          if (response.ok) {
+            const result = await response.json()
+            setImages((prev) => [...prev, result.image])
+            toast({
+              title: "Image Uploaded",
+              description: `${file.name} has been uploaded successfully.`,
+            })
+          }
+        }
+        reader.readAsDataURL(file)
+      } catch (error) {
+        console.error("Failed to upload image:", error)
+        toast({
+          title: "Upload Failed",
+          description: `Failed to upload ${file.name}. Please try again.`,
+          variant: "destructive",
+        })
+      }
+    }
+
+    setIsUploading(false)
+    // Reset the input
+    event.target.value = ""
+  }
+
+  const handleDeleteImage = async (imageId: string) => {
+    try {
+      const response = await fetch(`/api/barber/store-images/${imageId}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        setImages((prev) => prev.filter((img) => img.id !== imageId))
+        toast({
+          title: "Image Deleted",
+          description: "Image has been removed from your store.",
+        })
+      }
+    } catch (error) {
+      console.error("Failed to delete image:", error)
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete image. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
-    <div>
+    <div className="space-y-6">
+      <div className="text-center">
+        <ImageIcon className="h-12 w-12 text-primary mx-auto mb-4" />
+        <h2 className="text-xl font-semibold mb-2">Add Store Images</h2>
+        <p className="text-muted-foreground">
+          Upload photos of your barbershop to attract more customers. This step is optional.
+        </p>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ImageIcon className="h-5 w-5" />
-            Store Images
-          </CardTitle>
-          <CardDescription>Upload a logo and some gallery images to show off your store.</CardDescription>
+          <CardTitle>Store Gallery</CardTitle>
+          <CardDescription>
+            Add photos of your barbershop, work examples, or team. The first image will be your main photo.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <ImageUpload storeId={storeId} images={images} onImagesChange={fetchImages} />
+          {/* Upload Area */}
+          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center mb-6">
+            <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Upload Store Images</p>
+              <p className="text-xs text-muted-foreground">Drag and drop files here, or click to browse</p>
+              <p className="text-xs text-muted-foreground">Supports: JPG, PNG, WebP (Max 5MB each)</p>
+            </div>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleFileUpload}
+              disabled={isUploading}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            {isUploading && (
+              <div className="mt-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                <p className="text-sm text-muted-foreground mt-2">Uploading...</p>
+              </div>
+            )}
+          </div>
+
+          {/* Image Grid */}
+          {images.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {images.map((image, index) => (
+                <div key={image.id} className="relative group">
+                  <div className="aspect-square rounded-lg overflow-hidden bg-muted">
+                    <img
+                      src={image.image_data || "/placeholder.svg"}
+                      alt={image.image_name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  {image.is_primary && (
+                    <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
+                      Main Photo
+                    </div>
+                  )}
+                  <button
+                    onClick={() => handleDeleteImage(image.id)}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {images.length === 0 && !isUploading && (
+            <div className="text-center py-8 text-muted-foreground">
+              <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>No images uploaded yet</p>
+              <p className="text-sm">Add some photos to showcase your barbershop</p>
+            </div>
+          )}
         </CardContent>
       </Card>
-      <div className="mt-6 flex justify-between">
-        <Button type="button" variant="outline" onClick={onBack}>
+
+      {/* Navigation */}
+      <div className="flex justify-between pt-4">
+        <Button variant="outline" onClick={onBack}>
           Back
         </Button>
-        <Button type="button" onClick={onFinish}>
-          Finish
-        </Button>
+        <Button onClick={onFinish}>Complete Setup</Button>
       </div>
     </div>
   )
