@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from "lucide-react"
 import { StoreSetupDialog } from "@/components/store-setup-dialog"
+import {StoreSetupWizard} from "@/components/store-setup-wizard"
 import { ServiceManagementDialog } from "@/components/service-management-dialog"
 import { BlockTimeDialog } from "@/components/block-time-dialog"
 import { AppointmentCalendar } from "@/components/appointment-calendar"
@@ -664,16 +665,30 @@ export function BarberDashboard({
           </>
         )}
       </div>
+{showStoreSetupWizard && !store && (
+  <StoreSetupWizard
+    open={showStoreSetupWizard}
+    onOpenChange={setShowStoreSetupWizard}
+    onSuccess={(createdStore) => {
+      setShowStoreSetupWizard(false)
+      // Optional: refresh or revalidate to load created store
+      router.refresh()
+    }}
+  />
+)}
 
-      <StoreSetupDialog
-        open={showStoreSetup}
-        onOpenChange={setShowStoreSetup}
-        store={store}
-        onSuccess={() => {
-          router.refresh()
-          refreshDashboardData()
-        }}
-      />
+{showStoreSetup && store && (
+  <StoreSetupDialog
+    open={showStoreSetup}
+    onOpenChange={setShowStoreSetup}
+    store={store}
+    onSuccess={() => {
+      setShowStoreSetup(false)
+      refreshDashboardData()
+    }}
+  />
+)}
+
 
       {store && (
         <>
