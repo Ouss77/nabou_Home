@@ -1,18 +1,14 @@
 "use client"
 
-import { useCallback } from "react"
-
-import { useEffect, useState } from "react"
-
-import { Button } from "@/components/ui/button"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast } from "@/components/ui/use-toast"
-import { api } from "@/lib/api"
-import type { Store } from "@/lib/db" // Corrected import path for Store
-import { StoreSetupWizard } from "@/components/store-setup-wizard"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Calendar,
-  StoreIcon,
+  Store,
   Users,
   LogOut,
   Scissors,
@@ -23,9 +19,9 @@ import {
   Copy,
   RefreshCw,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { StoreSetupDialog } from "@/components/store-setup-dialog"
+import { ServiceManagementDialog } from "@/components/service-management-dialog"
+import { BlockTimeDialog } from "@/components/block-time-dialog"
 import { AppointmentCalendar } from "@/components/appointment-calendar"
 import { ImageUpload } from "@/components/image-upload"
 import { AnalyticsDashboard } from "@/components/analytics-dashboard"
@@ -33,15 +29,23 @@ import { AppointmentStatusSelector } from "@/components/appointment-status-selec
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useLanguage } from "@/components/language-provider"
+import { useToast } from "@/hooks/use-toast"
 import { formatCurrency } from "@/lib/currency-utils"
-import { ServiceManagementDialog } from "@/components/service-management-dialog"
-import { BlockTimeDialog } from "@/components/block-time-dialog"
 
 interface User {
   id: string
   email: string
   name: string
   role: string
+}
+
+interface StoreProps {
+  id: string
+  title: string
+  address: string
+  description: string
+  image_url: string
+  slug?: string
 }
 
 interface Service {
@@ -102,7 +106,7 @@ interface StoreImage {
 interface BarberDashboardProps {
   user: User
   storeId: string
-  store: Store | null
+  store: StoreProps | null
   services: Service[]
   appointments: Appointment[]
   workingHours: WorkingHours[]
@@ -110,7 +114,7 @@ interface BarberDashboardProps {
 
 export function BarberDashboard({
   user,
-  store: initialStore,
+  store,
   storeId,
   services: initialServices,
   appointments: initialAppointments,
@@ -130,31 +134,8 @@ export function BarberDashboard({
   const [lastDataUpdate, setLastDataUpdate] = useState<Date>(new Date())
   const [data, setData] = useState({ appointments: [], services: [] })
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [store, setStore] = useState<Store | null>(initialStore) // State for the store
 
   const router = useRouter()
-
-  // Fetch store data on component mount
-  useEffect(() => {
-    const fetchStore = async () => {
-      try {
-        const response = await api.get("/barber/store")
-        if (response.data && response.data.length > 0) {
-          setStore(response.data[0])
-        } else {
-          setStore(null)
-        }
-      } catch (error) {
-        console.error("Error fetching store:", error)
-        toast({
-          title: "Error",
-          description: "Failed to fetch store information.",
-          variant: "destructive",
-        })
-      }
-    }
-    fetchStore()
-  }, [toast])
 
   // Fetch blocked times and images when store is available
   useEffect(() => {
@@ -304,12 +285,6 @@ export function BarberDashboard({
       }, 0)
   }
 
-  const handleStoreSetupSuccess = (updatedStore: Store) => {
-    setStore(updatedStore)
-    setShowStoreSetup(false)
-    refreshDashboardData()
-  }
-
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -399,7 +374,7 @@ export function BarberDashboard({
         {!store ? (
           // Store Setup Required
           <div className="max-w-2xl mx-auto text-center py-12">
-            <StoreIcon className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+            <Store className="h-16 w-16 text-slate-400 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-slate-800 mb-2">
               {t.barberDashboard?.setUpStore || "Set Up Your Store"}
             </h2>
@@ -457,7 +432,7 @@ export function BarberDashboard({
                   <CardTitle className="text-sm font-medium">
                     {t.barberDashboard?.totalRevenue || "Total Revenue"}
                   </CardTitle>
-                  <StoreIcon className="h-4 w-4 text-muted-foreground" />
+                  <Store className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{totalRevenue(appointments, services)} €</div>
@@ -599,16 +574,16 @@ export function BarberDashboard({
                     <CardContent>
                       <div className="space-y-4">
                         <div>
-                          <h3 className="font-medium">{store?.title}</h3>
-                          <p className="text-sm text-muted-foreground">{store?.address}</p>
+                          <h3 className="font-medium">{store.title}</h3>
+                          <p className="text-sm text-muted-foreground">{store.address}</p>
                         </div>
-                        {store?.description && <p className="text-sm">{store.description}</p>}
+                        {store.description && <p className="text-sm">{store.description}</p>}
                       </div>
                     </CardContent>
                   </Card>
 
                   {/* Store Images */}
-                  {store && <ImageUpload storeId={store.id} images={storeImages} onImagesChange={fetchStoreImages} />}
+                  <ImageUpload storeId={store.id} images={storeImages} onImagesChange={fetchStoreImages} />
 
                   <Card>
                     <CardHeader>
@@ -686,11 +661,14 @@ export function BarberDashboard({
         )}
       </div>
 
-      <StoreSetupWizard
+      <StoreSetupDialog
         open={showStoreSetup}
         onOpenChange={setShowStoreSetup}
         store={store}
-        onSuccess={handleStoreSetupSuccess}
+        onSuccess={() => {
+          router.refresh()
+          refreshDashboardData()
+        }}
       />
 
       {store && (
