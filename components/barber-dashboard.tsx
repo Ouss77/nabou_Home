@@ -382,10 +382,11 @@ const [activeTab, setActiveTab] = useState<"basic" | "images" | "hours">("basic"
             <p className="text-slate-600 mb-6">
               {t.barberDashboard?.createProfile || "Create your barber profile to start accepting appointments"}
             </p>
-            <Button onClick={() => setShowStoreSetup(true)} size="lg">
-              <Plus className="h-4 w-4 mr-2" />
-              {t.barberDashboard?.createStore || "Create Store"}
-            </Button>
+<Button onClick={() => setShowStoreSetupWizard(true)} size="lg">
+  <Plus className="h-4 w-4 mr-2" />
+  {t.barberDashboard?.createStore || "Create Store"}
+</Button>
+
           </div>
         ) : (
           <>
@@ -666,16 +667,33 @@ const [activeTab, setActiveTab] = useState<"basic" | "images" | "hours">("basic"
         )}
       </div>
 
-        <StoreSetupDialog
-          open={showStoreSetup}
-          onOpenChange={setShowStoreSetup}
-          store={store}
-          defaultTab={activeTab} // pass the state
-          onSuccess={() => {
-            router.refresh()
-            refreshDashboardData()
-          }}
-        />
+
+        {showStoreSetupWizard && !store && (
+  <StoreSetupWizard
+    open={showStoreSetupWizard}
+    onOpenChange={setShowStoreSetupWizard}
+    onSuccess={(createdStore) => {
+      setShowStoreSetupWizard(false)
+      // Optional: refresh or revalidate to load created store
+      router.refresh()
+    }}
+  />
+)}
+
+{showStoreSetup && store && (
+  <StoreSetupDialog
+    open={showStoreSetup}
+    onOpenChange={setShowStoreSetup}
+    store={store}
+              defaultTab={activeTab} // pass the state
+
+    onSuccess={() => {
+      setShowStoreSetup(false)
+      refreshDashboardData()
+    }}
+  />
+)}
+
 
 
       {store && (
