@@ -137,6 +137,7 @@ export function BarberDashboard({
   const [lastDataUpdate, setLastDataUpdate] = useState<Date>(new Date())
   const [data, setData] = useState({ appointments: [], services: [] })
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [activeTab, setActiveTab] = useState<"basic" | "images" | "hours">("basic")
 
   const router = useRouter()
 
@@ -570,7 +571,7 @@ export function BarberDashboard({
                             {t.barberDashboard?.manageStore || "Manage your store details and settings"}
                           </CardDescription>
                         </div>
-                        <Button onClick={() => setShowStoreSetup(true)} variant="outline">
+                        <Button onClick={() => { setActiveTab("basic"); setShowStoreSetup(true); }} variant="outline">
                           <Settings className="h-4 w-4 mr-2" />
                           {t.barberDashboard?.editStore || "Edit Store"}
                         </Button>
@@ -633,10 +634,13 @@ export function BarberDashboard({
                           </CardTitle>
                           <CardDescription>Your business hours for customer bookings</CardDescription>
                         </div>
-                        <Button onClick={() => setShowStoreSetup(true)} variant="outline">
-                          <Settings className="h-4 w-4 mr-2" />
-                          Edit Hours
-                        </Button>
+                          <Button onClick={() => {
+                            setShowStoreSetup(true)
+                            setActiveTab("hours")  // you'll need a state for this (see below)
+                          }} variant="outline">
+                            <Settings className="h-4 w-4 mr-2" />
+                            Edit Hours
+                          </Button>
                       </div>
                     </CardHeader>
                     <CardContent>

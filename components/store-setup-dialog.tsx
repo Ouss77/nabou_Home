@@ -41,11 +41,12 @@ interface WorkingHours {
   is_closed: boolean
 }
 
-interface StoreSetupDialogProps {
+type StoreSetupDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   store: Store | null
   onSuccess: () => void
+  defaultTab?: "basic" | "images" | "hours"
 }
 
 const DAYS_OF_WEEK = [
@@ -68,7 +69,7 @@ const DEFAULT_WORKING_HOURS: WorkingHours[] = [
   { day_of_week: 6, start_time: "09:00", end_time: "17:00", is_closed: false }, // Saturday
 ]
 
-export function StoreSetupDialog({ open, onOpenChange, store, onSuccess }: StoreSetupDialogProps) {
+export function StoreSetupDialog({ open, onOpenChange, store, onSuccess, defaultTab }: StoreSetupDialogProps) {
   const { t } = useLanguage()
   const [title, setTitle] = useState(store?.title || "")
   const [address, setAddress] = useState(store?.address || "")
@@ -224,7 +225,7 @@ export function StoreSetupDialog({ open, onOpenChange, store, onSuccess }: Store
             </Alert>
           )}
 
-          <Tabs defaultValue="basic" className="w-full">
+          <Tabs defaultValue={defaultTab || "basic"} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="basic">Basic Info</TabsTrigger>
               <TabsTrigger value="images">Images</TabsTrigger>
