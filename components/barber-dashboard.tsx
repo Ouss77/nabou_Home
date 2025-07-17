@@ -20,7 +20,6 @@ import {
   RefreshCw,
 } from "lucide-react"
 import { StoreSetupDialog } from "@/components/store-setup-dialog"
-import {StoreSetupWizard} from "@/components/store-setup-wizard"
 import { ServiceManagementDialog } from "@/components/service-management-dialog"
 import { BlockTimeDialog } from "@/components/block-time-dialog"
 import { AppointmentCalendar } from "@/components/appointment-calendar"
@@ -124,8 +123,6 @@ export function BarberDashboard({
   const { t, language } = useLanguage()
   const { toast } = useToast()
   const [showStoreSetup, setShowStoreSetup] = useState(false)
-  const [showStoreSetupWizard, setShowStoreSetupWizard] = useState(false)
-
   const [showServiceManagement, setShowServiceManagement] = useState(false)
   const [showBlockTime, setShowBlockTime] = useState(false)
   const [blockedTimes, setBlockedTimes] = useState<BlockedTime[]>([])
@@ -137,7 +134,7 @@ export function BarberDashboard({
   const [lastDataUpdate, setLastDataUpdate] = useState<Date>(new Date())
   const [data, setData] = useState({ appointments: [], services: [] })
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [activeTab, setActiveTab] = useState<"basic" | "images" | "hours">("basic")
+const [activeTab, setActiveTab] = useState<"basic" | "images" | "hours">("basic")
 
   const router = useRouter()
 
@@ -385,12 +382,10 @@ export function BarberDashboard({
             <p className="text-slate-600 mb-6">
               {t.barberDashboard?.createProfile || "Create your barber profile to start accepting appointments"}
             </p>
-
-            <Button onClick={() => setShowStoreSetupWizard(true)} size="lg">
-  <Plus className="h-4 w-4 mr-2" />
-  {t.barberDashboard?.createStore || "Create Store"}
-</Button>
-
+            <Button onClick={() => setShowStoreSetup(true)} size="lg">
+              <Plus className="h-4 w-4 mr-2" />
+              {t.barberDashboard?.createStore || "Create Store"}
+            </Button>
           </div>
         ) : (
           <>
@@ -641,6 +636,7 @@ export function BarberDashboard({
                             <Settings className="h-4 w-4 mr-2" />
                             Edit Hours
                           </Button>
+
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -669,29 +665,17 @@ export function BarberDashboard({
           </>
         )}
       </div>
-{showStoreSetupWizard && !store && (
-  <StoreSetupWizard
-    open={showStoreSetupWizard}
-    onOpenChange={setShowStoreSetupWizard}
-    onSuccess={(createdStore) => {
-      setShowStoreSetupWizard(false)
-      // Optional: refresh or revalidate to load created store
-      router.refresh()
-    }}
-  />
-)}
 
-{showStoreSetup && store && (
-  <StoreSetupDialog
-    open={showStoreSetup}
-    onOpenChange={setShowStoreSetup}
-    store={store}
-    onSuccess={() => {
-      setShowStoreSetup(false)
-      refreshDashboardData()
-    }}
-  />
-)}
+        <StoreSetupDialog
+          open={showStoreSetup}
+          onOpenChange={setShowStoreSetup}
+          store={store}
+          defaultTab={activeTab} // pass the state
+          onSuccess={() => {
+            router.refresh()
+            refreshDashboardData()
+          }}
+        />
 
 
       {store && (
