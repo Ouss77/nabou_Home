@@ -135,6 +135,7 @@ export function BarberDashboard({
   const [data, setData] = useState({ appointments: [], services: [] })
   const [isRefreshing, setIsRefreshing] = useState(false)
 const [activeTab, setActiveTab] = useState<"basic" | "images" | "hours">("basic")
+const [showStoreSetupWizard, setShowStoreSetupWizard] = useState(false)
 
   const router = useRouter()
 
