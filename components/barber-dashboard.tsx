@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from "lucide-react"
 import { StoreSetupDialog } from "@/components/store-setup-dialog"
+import {StoreSetupWizard} from "@/components/store-setup-wizard.tsx"
 import { ServiceManagementDialog } from "@/components/service-management-dialog"
 import { BlockTimeDialog } from "@/components/block-time-dialog"
 import { AppointmentCalendar } from "@/components/appointment-calendar"
