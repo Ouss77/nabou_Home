@@ -49,7 +49,7 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
     imageUrl?: string
   }) => {
     setIsLoading(true)
-    try {
+    try { 
       const response = await fetch("/api/barber/store", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
