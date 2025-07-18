@@ -9,7 +9,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     if (!name || !price || !durationMinutes) {
       return NextResponse.json({ error: "Name, price, and duration are required" }, { status: 400 })
-    }
+    } 
 
     const service = await updateService(params.id, name, description, price, durationMinutes)
 
