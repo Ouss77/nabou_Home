@@ -21,7 +21,7 @@ interface Service {
 }
 
 interface Step2ServicesProps {
-  storeId: string
+  storeId: string 
   onNext: () => void
   onBack: () => void
 }

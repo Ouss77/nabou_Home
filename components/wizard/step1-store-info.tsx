@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,12 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Store, MapPin, FileText } from "lucide-react"
 
 interface Step1StoreInfoProps {
-  onNext: (data: {
-    title: string
-    address: string
-    description: string
-    imageUrl?: string
-  }) => void
+  onNext: (store: any) => void
 }
 
 export function Step1StoreInfo({ onNext }: Step1StoreInfoProps) {
@@ -28,31 +22,28 @@ export function Step1StoreInfo({ onNext }: Step1StoreInfoProps) {
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
 
-    // Validation
-    const newErrors: Record<string, string> = {}
-    if (!formData.title.trim()) {
-      newErrors.title = "Store name is required"
-    }
-    if (!formData.address.trim()) {
-      newErrors.address = "Address is required"
-    }
+  // Validation
+  const newErrors: Record<string, string> = {}
+  if (!formData.title.trim()) newErrors.title = "Store name is required"
+  if (!formData.address.trim()) newErrors.address = "Address is required"
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
-      return
-    }
-
-    setErrors({})
-    onNext(formData)
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(newErrors)
+    return
   }
+
+  setErrors({})
+  onNext(formData) // Just pass the data to parent
+}
+
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }))
     }
@@ -120,8 +111,8 @@ export function Step1StoreInfo({ onNext }: Step1StoreInfoProps) {
             </div>
 
             <div className="flex justify-end pt-4">
-              <Button type="submit" size="lg">
-                Continue to Services
+              <Button type="submit" size="lg" disabled={loading}>
+                {loading ? "Creating..." : "Continue to Services"}
               </Button>
             </div>
           </form>
