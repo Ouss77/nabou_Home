@@ -42,65 +42,75 @@ export function Step4Images({ storeId, onFinish, onBack }: Step4ImagesProps) {
     }
   }
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
-    if (!files || files.length === 0) return
+const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const files = event.target.files
+  if (!files || files.length === 0) return
 
-    setIsUploading(true)
+  setIsUploading(true)
 
-    for (const file of Array.from(files)) {
+  const uploads = Array.from(files).map((file, idx) => {
+    return new Promise<void>((resolve) => {
       if (file.size > 5 * 1024 * 1024) {
-        // 5MB limit
         toast({
-          title: "File Too Large",
+          title: "File Too Large", 
           description: `${file.name} is too large. Please choose files under 5MB.`,
           variant: "destructive",
         })
-        continue
+        return resolve()
       }
 
-      try {
-        const reader = new FileReader()
-        reader.onload = async (e) => {
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        try {
           const imageData = e.target?.result as string
+
+          // ✅ Prevent double base64 prefix issue
+          if (!imageData.startsWith("data:image")) {
+            throw new Error("Invalid base64 image data")
+          }
+
+          const base64WithoutPrefix = imageData.split(",")[1]
 
           const response = await fetch("/api/barber/store-images", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               storeId,
-              imageData,
+              imageData: base64WithoutPrefix,
               imageName: file.name,
               imageType: file.type,
               imageSize: file.size,
-              isPrimary: images.length === 0, // First image is primary
+              isPrimary: images.length === 0 && idx === 0,
             }),
           })
 
-          if (response.ok) {
-            const result = await response.json()
-            setImages((prev) => [...prev, result.image])
-            toast({
-              title: "Image Uploaded",
-              description: `${file.name} has been uploaded successfully.`,
-            })
+          if (!response.ok) {
+            throw new Error(`Upload failed for ${file.name}`)
           }
+        } catch (err) {
+          console.error("Failed to upload image:", err)
+          toast({
+            title: "Upload Failed",
+            description: `Failed to upload ${file.name}.`,
+            variant: "destructive",
+          })
         }
-        reader.readAsDataURL(file)
-      } catch (error) {
-        console.error("Failed to upload image:", error)
-        toast({
-          title: "Upload Failed",
-          description: `Failed to upload ${file.name}. Please try again.`,
-          variant: "destructive",
-        })
-      }
-    }
 
-    setIsUploading(false)
-    // Reset the input
-    event.target.value = ""
-  }
+        resolve()
+      }
+
+      reader.readAsDataURL(file)
+    })
+  })
+
+  await Promise.all(uploads)
+    await fetchImages() // ✅ Refresh the image list here
+
+  setIsUploading(false)
+  event.target.value = ""
+}
+
+
 
   const handleDeleteImage = async (imageId: string) => {
     try {
@@ -143,8 +153,12 @@ export function Step4Images({ storeId, onFinish, onBack }: Step4ImagesProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
+            <div className="max-h-[400px] overflow-y-auto">
+
           {/* Upload Area */}
           <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center mb-6">
+          <label className="relative block cursor-pointer border-2 border-dashed rounded-lg p-8 text-center hover:bg-accent transition">
+
             <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <div className="space-y-2">
               <p className="text-sm font-medium">Upload Store Images</p>
@@ -159,6 +173,8 @@ export function Step4Images({ storeId, onFinish, onBack }: Step4ImagesProps) {
               disabled={isUploading}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
+            </label>
+
             {isUploading && (
               <div className="mt-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
@@ -166,7 +182,6 @@ export function Step4Images({ storeId, onFinish, onBack }: Step4ImagesProps) {
               </div>
             )}
           </div>
-
           {/* Image Grid */}
           {images.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -174,8 +189,7 @@ export function Step4Images({ storeId, onFinish, onBack }: Step4ImagesProps) {
                 <div key={image.id} className="relative group">
                   <div className="aspect-square rounded-lg overflow-hidden bg-muted">
                     <img
-                      src={image.image_data || "/placeholder.svg"}
-                      alt={image.image_name}
+                  src={image.image_data.startsWith("data:image") ? image.image_data : `data:image/jpeg;base64,${image.image_data}`}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -202,6 +216,7 @@ export function Step4Images({ storeId, onFinish, onBack }: Step4ImagesProps) {
               <p className="text-sm">Add some photos to showcase your barbershop</p>
             </div>
           )}
+        </div>
         </CardContent>
       </Card>
 
