@@ -1,222 +1,192 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ImageIcon, Upload, X } from "lucide-react"
+import { Clock } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
-interface StoreImage {
-  id: string
-  image_data: string
-  image_name: string
-  is_primary: boolean
+interface WorkingHours {
+  day_of_week: number
+  start_time: string
+  end_time: string
+  is_closed: boolean
 }
 
-interface Step4ImagesProps {
+interface Step3WorkingHoursProps {
   storeId: string
-  onFinish: () => void
+  onNext: () => void
   onBack: () => void
 }
+ 
+const DAYS = [
+  { name: "Sunday", value: 0 },
+  { name: "Monday", value: 1 },
+  { name: "Tuesday", value: 2 },
+  { name: "Wednesday", value: 3 },
+  { name: "Thursday", value: 4 },
+  { name: "Friday", value: 5 },
+  { name: "Saturday", value: 6 },
+]
 
-export function Step4Images({ storeId, onFinish, onBack }: Step4ImagesProps) {
-  const [images, setImages] = useState<StoreImage[]>([])
-  const [isUploading, setIsUploading] = useState(false)
+const DEFAULT_HOURS: WorkingHours[] = [
+  { day_of_week: 0, start_time: "10:00", end_time: "16:00", is_closed: true }, // Sunday - closed
+  { day_of_week: 1, start_time: "09:00", end_time: "18:00", is_closed: false }, // Monday
+  { day_of_week: 2, start_time: "09:00", end_time: "18:00", is_closed: false }, // Tuesday
+  { day_of_week: 3, start_time: "09:00", end_time: "18:00", is_closed: false }, // Wednesday
+  { day_of_week: 4, start_time: "09:00", end_time: "18:00", is_closed: false }, // Thursday
+  { day_of_week: 5, start_time: "09:00", end_time: "18:00", is_closed: false }, // Friday
+  { day_of_week: 6, start_time: "09:00", end_time: "17:00", is_closed: false }, // Saturday
+]
+
+export function Step3WorkingHours({ storeId, onNext, onBack }: Step3WorkingHoursProps) {
+  const [workingHours, setWorkingHours] = useState<WorkingHours[]>(DEFAULT_HOURS)
+  const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
+  // Fetch existing working hours
   useEffect(() => {
-    fetchImages()
+    fetchWorkingHours()
   }, [storeId])
 
-  const fetchImages = async () => {
+  const fetchWorkingHours = async () => {
     try {
-      const response = await fetch(`/api/barber/store-images?storeId=${storeId}`)
+      const response = await fetch(`/api/barber/working-hours?storeId=${storeId}`)
       if (response.ok) {
         const data = await response.json()
-        setImages(data.images || [])
+        if (data.workingHours && data.workingHours.length > 0) {
+          setWorkingHours(data.workingHours)
+        }
       }
     } catch (error) {
-      console.error("Failed to fetch images:", error)
+      console.error("Failed to fetch working hours:", error)
     }
   }
 
-const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-  const files = event.target.files
-  if (!files || files.length === 0) return
-
-  setIsUploading(true)
-
-  const uploads = Array.from(files).map((file, idx) => {
-    return new Promise<void>((resolve) => {
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "File Too Large", 
-          description: `${file.name} is too large. Please choose files under 5MB.`,
-          variant: "destructive",
-        })
-        return resolve()
-      }
-
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        try {
-          const imageData = e.target?.result as string
-
-          // ✅ Prevent double base64 prefix issue
-          if (!imageData.startsWith("data:image")) {
-            throw new Error("Invalid base64 image data")
-          }
-
-          const base64WithoutPrefix = imageData.split(",")[1]
-
-          const response = await fetch("/api/barber/store-images", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              storeId,
-              imageData: base64WithoutPrefix,
-              imageName: file.name,
-              imageType: file.type,
-              imageSize: file.size,
-              isPrimary: images.length === 0 && idx === 0,
-            }),
-          })
-
-          if (!response.ok) {
-            throw new Error(`Upload failed for ${file.name}`)
-          }
-        } catch (err) {
-          console.error("Failed to upload image:", err)
-          toast({
-            title: "Upload Failed",
-            description: `Failed to upload ${file.name}.`,
-            variant: "destructive",
-          })
-        }
-
-        resolve()
-      }
-
-      reader.readAsDataURL(file)
-    })
-  })
-
-  await Promise.all(uploads)
-    await fetchImages() // ✅ Refresh the image list here
-
-  setIsUploading(false)
-  event.target.value = ""
-}
-
-
-
-  const handleDeleteImage = async (imageId: string) => {
+  const handleSave = async () => {
+    setIsLoading(true)
     try {
-      const response = await fetch(`/api/barber/store-images/${imageId}`, {
-        method: "DELETE",
+      const response = await fetch("/api/barber/working-hours", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeId,
+          workingHours,
+        }),
       })
 
       if (response.ok) {
-        setImages((prev) => prev.filter((img) => img.id !== imageId))
         toast({
-          title: "Image Deleted",
-          description: "Image has been removed from your store.",
+          title: "Working Hours Saved",
+          description: "Your business hours have been set successfully.",
         })
+        onNext()
+      } else {
+        throw new Error("Failed to save working hours")
       }
     } catch (error) {
-      console.error("Failed to delete image:", error)
+      console.error("Failed to save working hours:", error)
       toast({
-        title: "Delete Failed",
-        description: "Failed to delete image. Please try again.",
+        title: "Error",
+        description: "Failed to save working hours. Please try again.",
         variant: "destructive",
       })
+    } finally {
+      setIsLoading(false)
     }
+  }
+
+  const updateWorkingHours = (dayOfWeek: number, field: keyof WorkingHours, value: string | boolean) => {
+    setWorkingHours((prev) => prev.map((wh) => (wh.day_of_week === dayOfWeek ? { ...wh, [field]: value } : wh)))
+  }
+
+  const copyToAllDays = (sourceDay: WorkingHours) => {
+    setWorkingHours((prev) =>
+      prev.map((wh) => ({
+        ...wh,
+        start_time: sourceDay.start_time,
+        end_time: sourceDay.end_time,
+        is_closed: sourceDay.is_closed,
+      })),
+    )
+    toast({
+      title: "Hours Copied",
+      description: "Working hours have been applied to all days.",
+    })
   }
 
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <ImageIcon className="h-12 w-12 text-primary mx-auto mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Add Store Images</h2>
-        <p className="text-muted-foreground">
-          Upload photos of your barbershop to attract more customers. This step is optional.
-        </p>
+        <Clock className="h-12 w-12 text-primary mx-auto mb-4" />
+        <h2 className="text-xl font-semibold mb-2">Set Your Working Hours</h2>
+        <p className="text-muted-foreground">Define when customers can book appointments at your barbershop.</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Store Gallery</CardTitle>
+          <CardTitle>Business Hours</CardTitle>
           <CardDescription>
-            Add photos of your barbershop, work examples, or team. The first image will be your main photo.
+            Set your operating hours for each day of the week. Customers can only book during these times.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-            <div className="max-h-[400px] overflow-y-auto">
+        <CardContent className="space-y-4">
+          {DAYS.map((day) => {
+            const dayHours = workingHours.find((wh) => wh.day_of_week === day.value) || DEFAULT_HOURS[day.value]
 
-          {/* Upload Area */}
-          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center mb-6">
-          <label className="relative block cursor-pointer border-2 border-dashed rounded-lg p-8 text-center hover:bg-accent transition">
-
-            <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Upload Store Images</p>
-              <p className="text-xs text-muted-foreground">Drag and drop files here, or click to browse</p>
-              <p className="text-xs text-muted-foreground">Supports: JPG, PNG, WebP (Max 5MB each)</p>
-            </div>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileUpload}
-              disabled={isUploading}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-            </label>
-
-            {isUploading && (
-              <div className="mt-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
-                <p className="text-sm text-muted-foreground mt-2">Uploading...</p>
-              </div>
-            )}
-          </div>
-          {/* Image Grid */}
-          {images.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {images.map((image, index) => (
-                <div key={image.id} className="relative group">
-                  <div className="aspect-square rounded-lg overflow-hidden bg-muted">
-                    <img
-                  src={image.image_data.startsWith("data:image") ? image.image_data : `data:image/jpeg;base64,${image.image_data}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  {image.is_primary && (
-                    <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
-                      Main Photo
-                    </div>
-                  )}
-                  <button
-                    onClick={() => handleDeleteImage(image.id)}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+            return (
+              <div key={day.value} className="flex items-center gap-4 p-4 border rounded-lg">
+                <div className="w-24">
+                  <Label className="font-medium">{day.name}</Label>
                 </div>
-              ))}
-            </div>
-          )}
 
-          {images.length === 0 && !isUploading && (
-            <div className="text-center py-8 text-muted-foreground">
-              <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>No images uploaded yet</p>
-              <p className="text-sm">Add some photos to showcase your barbershop</p>
-            </div>
-          )}
-        </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={!dayHours.is_closed}
+                    onCheckedChange={(checked) => updateWorkingHours(day.value, "is_closed", !checked)}
+                  />
+                  <Label className="text-sm">{dayHours.is_closed ? "Closed" : "Open"}</Label>
+                </div>
+
+                {!dayHours.is_closed && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={`start-${day.value}`} className="text-sm">
+                        From:
+                      </Label>
+                      <Input
+                        id={`start-${day.value}`}
+                        type="time"
+                        value={dayHours.start_time}
+                        onChange={(e) => updateWorkingHours(day.value, "start_time", e.target.value)}
+                        className="w-32"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={`end-${day.value}`} className="text-sm">
+                        To:
+                      </Label>
+                      <Input
+                        id={`end-${day.value}`}
+                        type="time"
+                        value={dayHours.end_time}
+                        onChange={(e) => updateWorkingHours(day.value, "end_time", e.target.value)}
+                        className="w-32"
+                      />
+                    </div>
+
+                    <Button variant="outline" size="sm" onClick={() => copyToAllDays(dayHours)} className="text-xs">
+                      Copy to all
+                    </Button>
+                  </>
+                )}
+              </div>
+            )
+          })}
         </CardContent>
       </Card>
 
@@ -225,7 +195,9 @@ const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         <Button variant="outline" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={onFinish}>Complete Setup</Button>
+        <Button onClick={handleSave} disabled={isLoading}>
+          {isLoading ? "Saving..." : "Continue to Images"}
+        </Button>
       </div>
     </div>
   )
