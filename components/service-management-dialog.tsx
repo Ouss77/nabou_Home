@@ -83,7 +83,7 @@ export function ServiceManagementDialog({
           name,
           description,
           price: Number.parseFloat(price),
-          durationMinutes: Number.parseInt(duration),
+           duration_minutes: Number.parseInt(duration), // ✅ update key name
         }),
       })
 
