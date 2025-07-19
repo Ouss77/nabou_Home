@@ -5,7 +5,7 @@ import { BarberDashboard } from "@/components/barber-dashboard"
 export default async function BarberPage() {
   const user = await requireBarber()
   const store = await getStoreByBarberId(user.id)
-  const services = store ? await getServicesByStoreId(store.id) : []
+  //const services = store ? await getServicesByStoreId(store.id) : []
   const appointments = store ? await getAppointmentsByStoreId(store.id) : []
   const workingHours = store ? await getWorkingHoursByStoreId(store.id) : []
 
@@ -14,7 +14,7 @@ export default async function BarberPage() {
       storeId={store?.id || ""}
       user={user}
       store={store}
-      services={services}
+      //services={services}
       appointments={appointments}
       workingHours={workingHours}
     />

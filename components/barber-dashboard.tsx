@@ -108,7 +108,7 @@ interface BarberDashboardProps {
   user: User
   storeId: string
   store: StoreProps | null
-  services: Service[]
+  //services: Service[]
   appointments: Appointment[]
   workingHours: WorkingHours[]
 }
@@ -117,7 +117,7 @@ export function BarberDashboard({
   user,
   store,
   storeId,
-  services: initialServices,
+  //services: initialServices,
   appointments: initialAppointments,
   workingHours,
 }: BarberDashboardProps) {
@@ -131,7 +131,7 @@ export function BarberDashboard({
   const [loadingBlockedTimes, setLoadingBlockedTimes] = useState(false)
   const [loadingImages, setLoadingImages] = useState(false)
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments)
-  const [services, setServices] = useState<Service[]>(initialServices)
+  const [services, setServices] = useState([])
   const [lastDataUpdate, setLastDataUpdate] = useState<Date>(new Date())
   const [data, setData] = useState({ appointments: [], services: [] })
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -139,6 +139,18 @@ const [activeTab, setActiveTab] = useState<"basic" | "images" | "hours">("basic"
 const [showStoreSetupWizard, setShowStoreSetupWizard] = useState(false)
 
   const router = useRouter()
+
+  const fetchServices = async () => {
+    const res = await fetch(`/api/barber/services?storeId=${storeId}`)
+    const data = await res.json()
+    setServices(data.services || [])
+  }
+
+  useEffect(() => {
+    if (storeId) {
+      fetchServices()
+    }
+  }, [storeId])
 
   // Fetch blocked times and images when store is available
   useEffect(() => {
@@ -669,7 +681,6 @@ const [showStoreSetupWizard, setShowStoreSetupWizard] = useState(false)
         )}
       </div>
 
-
         {showStoreSetupWizard && !store && (
   <StoreSetupWizard
     open={showStoreSetupWizard}
@@ -682,21 +693,19 @@ const [showStoreSetupWizard, setShowStoreSetupWizard] = useState(false)
   />
 )}
 
-{showStoreSetup && store && (
-  <StoreSetupDialog
-    open={showStoreSetup}
-    onOpenChange={setShowStoreSetup}
-    store={store}
-              defaultTab={activeTab} // pass the state
+        {showStoreSetup && store && (
+                      <StoreSetupDialog
+                      open={showStoreSetup}
+                      onOpenChange={setShowStoreSetup}
+                      store={store}
+                      defaultTab={activeTab} // pass the state
 
-    onSuccess={() => {
-      setShowStoreSetup(false)
-      refreshDashboardData()
-    }}
-  />
-)}
-
-
+            onSuccess={() => {
+              setShowStoreSetup(false)
+              refreshDashboardData()
+            }}
+          />
+        )}
 
       {store && (
         <>
@@ -706,6 +715,8 @@ const [showStoreSetupWizard, setShowStoreSetupWizard] = useState(false)
             storeId={store.id}
             services={services}
             onSuccess={() => {
+                        fetchServices() // instantly updates the UI
+
               router.refresh()
               refreshDashboardData()
             }}
