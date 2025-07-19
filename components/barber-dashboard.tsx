@@ -32,7 +32,7 @@ import Link from "next/link"
 import { useLanguage } from "@/components/language-provider"
 import { useToast } from "@/hooks/use-toast"
 import { formatCurrency } from "@/lib/currency-utils"
-
+import { LandingPageEditor } from "./landing-page-editor"
 interface User {
   id: string
   email: string
@@ -473,6 +473,9 @@ export function BarberDashboard({
                 </TabsTrigger>
                 <TabsTrigger value="analytics">Analytics</TabsTrigger>
                 <TabsTrigger value="store">{t.barberDashboard?.storeInformation || "Store Information"}</TabsTrigger>
+                <TabsTrigger value="landing-page-editor">
+                  {t.barberDashboard?.landingPageEditor || "Landing Page Editor"}
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="appointments">
@@ -682,6 +685,10 @@ export function BarberDashboard({
                     </CardContent>
                   </Card>
                 </div>
+              </TabsContent>
+
+              <TabsContent value="landing-page-editor">
+                <LandingPageEditor store={store} />
               </TabsContent>
             </Tabs>
           </>
