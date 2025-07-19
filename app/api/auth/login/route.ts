@@ -34,39 +34,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
-    // For barbers, check trial status and appointment count
-    if (user.role === "barber") {
-      const updatedUser = await checkAndUpdateBarberTrialStatus(user.id)
-
-      if (!updatedUser) {
-        return NextResponse.json({ error: "User account not found" }, { status: 404 })
-      }
-
-      // Block access for expired barbers
-      if (updatedUser.status === "expired") {
-        return NextResponse.json(
-          {
-            error: "Your free trial has ended. Please upgrade to continue using the service.",
-            code: "TRIAL_EXPIRED",
-          },
-          { status: 403 },
-        )
-      }
-
-      // Only allow trial and active barbers to login
-      if (updatedUser.status !== "trial" && updatedUser.status !== "active") {
-        return NextResponse.json(
-          {
-            error: "Account access is restricted. Please contact support.",
-            code: "ACCESS_RESTRICTED",
-          },
-          { status: 403 },
-        )
-      }
-
-      // Use the updated user data for session
-      user.status = updatedUser.status
-    }
+ 
 
     const userSession = {
       id: user.id,
