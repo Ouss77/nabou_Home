@@ -5,13 +5,13 @@ import { requireBarber } from "@/lib/auth"
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireBarber()
-    const { name, description, price, durationMinutes } = await request.json()
+    const { name, description, price, duration_minutes } = await request.json()
 
-    if (!name || !price || !durationMinutes) {
+    if (!name || !price || !duration_minutes) {
       return NextResponse.json({ error: "Name, price, and duration are required" }, { status: 400 })
     } 
 
-    const service = await updateService(params.id, name, description, price, durationMinutes)
+    const service = await updateService(params.id, name, description, price, duration_minutes)
 
     return NextResponse.json({ service })
   } catch (error) {
