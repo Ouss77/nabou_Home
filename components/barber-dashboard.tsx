@@ -111,12 +111,15 @@ interface BarberDashboardProps {
   //services: Service[]
   appointments: Appointment[]
   workingHours: WorkingHours[]
+  userStatus?: string
+
 }
 
 export function BarberDashboard({
   user,
   store,
   storeId,
+  userStatus,
   //services: initialServices,
   appointments: initialAppointments,
   workingHours,
@@ -135,11 +138,13 @@ export function BarberDashboard({
   const [lastDataUpdate, setLastDataUpdate] = useState<Date>(new Date())
   const [data, setData] = useState({ appointments: [], services: [] })
   const [isRefreshing, setIsRefreshing] = useState(false)
-const [activeTab, setActiveTab] = useState<"basic" | "images" | "hours">("basic")
-const [showStoreSetupWizard, setShowStoreSetupWizard] = useState(false)
+  const [activeTab, setActiveTab] = useState<"basic" | "images" | "hours">("basic")
+  const [showStoreSetupWizard, setShowStoreSetupWizard] = useState(false)
 
   const router = useRouter()
 
+    const isTrialExpired = userStatus === "expired"
+    console.log("User status:", userStatus)
   const fetchServices = async () => {
     const res = await fetch(`/api/barber/services?storeId=${storeId}`)
     const data = await res.json()
@@ -385,27 +390,7 @@ const [showStoreSetupWizard, setShowStoreSetupWizard] = useState(false)
         }
       `}</style>
 
-      <div className="p-4 sm:p-6">
-        {!store ? (
-          // Store Setup Required
-          <div className="max-w-2xl mx-auto text-center py-12">
-            <Store className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">
-              {t.barberDashboard?.setUpStore || "Set Up Your Store"}
-            </h2>
-            <p className="text-slate-600 mb-6">
-              {t.barberDashboard?.createProfile || "Create your barber profile to start accepting appointments"}
-            </p>
-<Button onClick={() => setShowStoreSetupWizard(true)} size="lg">
-  <Plus className="h-4 w-4 mr-2" />
-  {t.barberDashboard?.createStore || "Create Store"}
-</Button>
-
-          </div>
-        ) : (
-          <>
-            {/* Stats Cards - Using live data */}
-            <div className="hidden md:grid md:grid-cols-4 gap-6 mb-8">
+                <div className="hidden md:grid md:grid-cols-4 m-5 gap-6 mb-8">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
@@ -456,6 +441,28 @@ const [showStoreSetupWizard, setShowStoreSetupWizard] = useState(false)
                 </CardContent>
               </Card>
             </div>
+      {/* Main Content */}
+      {!isTrialExpired && (  <div className="p-4 sm:p-6">
+        {!store ? (
+          // Store Setup Required
+          <div className="max-w-2xl mx-auto text-center py-12">
+            <Store className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">
+              {t.barberDashboard?.setUpStore || "Set Up Your Store"}
+            </h2>
+            <p className="text-slate-600 mb-6">
+              {t.barberDashboard?.createProfile || "Create your barber profile to start accepting appointments"}
+            </p>
+<Button onClick={() => setShowStoreSetupWizard(true)} size="lg">
+  <Plus className="h-4 w-4 mr-2" />
+  {t.barberDashboard?.createStore || "Create Store"}
+</Button>
+
+          </div>
+        ) : (
+          <>
+            {/* Stats Cards - Using live data */}
+
 
             {/* Main Content */}
             <Tabs defaultValue="appointments" className="space-y-6">
@@ -679,7 +686,23 @@ const [showStoreSetupWizard, setShowStoreSetupWizard] = useState(false)
             </Tabs>
           </>
         )}
-      </div>
+      </div>)}
+      {isTrialExpired && (
+        <div className="max-w-2xl mx-auto text-center py-12">
+          <Clock className="h-16 w-16 text-red-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-red-800 mb-2">
+            {t.barberDashboard?.trialExpired || "Your trial has expired"  }
+          </h2>
+          <p className="text-red-600 mb-6">
+            {t.barberDashboard?.upgradeRequired || "Please upgrade your plan to continue using BarberBook."}
+          </p>  
+          <Button onClick={() => router.push("/upgrade")} size="lg">
+            <Settings className="h-4 w-4 mr-2" />
+            {t.barberDashboard?.upgradeNow || "Upgrade Now"}
+          </Button>
+        </div>
+      )}
+
 
         {showStoreSetupWizard && !store && (
   <StoreSetupWizard
