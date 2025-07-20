@@ -17,12 +17,7 @@ import {
   Twitter,
   Globe,
   Scissors,
-  ChevronLeft,
-  ChevronRight,
   X,
-  ZoomIn,
-  ZoomOut,
-  Images,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -95,27 +90,12 @@ export function BarberLandingPage({
   images,
   landingPageData = {},
 }: BarberLandingPageProps) {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
-  const [showGallery, setShowGallery] = useState(false)
-  const [isZoomed, setIsZoomed] = useState(false)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [showFullScreenGallery, setShowFullScreenGallery] = useState(false)
 
   const primaryImage = images.find((img) => img.is_primary) || images[0]
-  const galleryImages = images.filter((img) => !img.is_primary)
-  const allImages = images
-
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % allImages.length)
-    setIsZoomed(false)
-  }
-
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length)
-    setIsZoomed(false)
-  }
-
-  const toggleZoom = () => {
-    setIsZoomed(!isZoomed)
-  }
+  const mainImage = primaryImage || images[0]
+  const thumbnailImages = images.filter((img) => img.id !== mainImage?.id)
 
   const getDayName = (dayIndex: number) => {
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -127,6 +107,11 @@ export function BarberLandingPage({
       style: "currency",
       currency: "EUR",
     }).format(price)
+  }
+
+  const openFullScreenGallery = (imageIndex: number) => {
+    setSelectedImageIndex(imageIndex)
+    setShowFullScreenGallery(true)
   }
 
   return (
@@ -157,7 +142,7 @@ export function BarberLandingPage({
         </div>
       </nav>
 
-      {/* Hero Section with Image Gallery */}
+      {/* Hero Section */}
       <section className="relative bg-gradient-to-r from-slate-900 to-slate-700 text-white">
         <div className="absolute inset-0 bg-black/20" />
         {primaryImage && (
@@ -180,49 +165,6 @@ export function BarberLandingPage({
             <p className="text-xl md:text-2xl text-slate-200 mb-6">{store.title}</p>
             {landingPageData.bio && (
               <p className="text-lg text-slate-300 mb-8 max-w-2xl mx-auto">{landingPageData.bio}</p>
-            )}
-
-            {/* Image Preview Grid */}
-            {images.length > 0 && (
-              <div className="mb-8">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-w-2xl mx-auto">
-                  {images.slice(0, 4).map((image, index) => (
-                    <div
-                      key={image.id}
-                      className="aspect-square relative rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform"
-                      onClick={() => {
-                        setCurrentImageIndex(index)
-                        setShowGallery(true)
-                      }}
-                    >
-                      <Image
-                        src={`data:${image.image_name.split(".").pop()};base64,${image.image_data}`}
-                        alt={`Gallery ${index + 1}`}
-                        fill
-                        className="object-cover"
-                      />
-                      {index === 3 && images.length > 4 && (
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                          <div className="text-white text-center">
-                            <Images className="h-6 w-6 mx-auto mb-1" />
-                            <span className="text-sm font-medium">+{images.length - 4} more</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {images.length > 4 && (
-                  <Button
-                    variant="outline"
-                    className="mt-4 bg-white/10 border-white/20 text-white hover:bg-white/20"
-                    onClick={() => setShowGallery(true)}
-                  >
-                    <Images className="h-4 w-4 mr-2" />
-                    View All Photos ({images.length})
-                  </Button>
-                )}
-              </div>
             )}
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -251,95 +193,51 @@ export function BarberLandingPage({
         </div>
       </section>
 
-      {/* Gallery Modal */}
-      <Dialog open={showGallery} onOpenChange={setShowGallery}>
-        <DialogContent className="max-w-7xl max-h-[95vh] p-0 bg-black/95 border-none">
-          <div className="relative w-full h-full flex flex-col">
+      {/* Full Screen Gallery Modal */}
+      <Dialog open={showFullScreenGallery} onOpenChange={setShowFullScreenGallery}>
+        <DialogContent className="max-w-none max-h-none w-screen h-screen p-0 bg-black/95 border-none m-0">
+          <div className="relative w-full h-full">
             {/* Header */}
-            <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent">
+            <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-6 bg-gradient-to-b from-black/80 to-transparent">
               <div className="text-white">
-                <h3 className="text-lg font-semibold">{allImages[currentImageIndex]?.image_name}</h3>
-                <p className="text-sm text-white/70">
-                  {currentImageIndex + 1} of {allImages.length}
-                </p>
+                <h3 className="text-2xl font-semibold">{store.barber_name} - Gallery</h3>
+                <p className="text-white/70">{images.length} photos</p>
               </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={toggleZoom} className="text-white hover:bg-white/20">
-                  {isZoomed ? <ZoomOut className="h-4 w-4" /> : <ZoomIn className="h-4 w-4" />}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowGallery(false)}
-                  className="text-white hover:bg-white/20"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={() => setShowFullScreenGallery(false)}
+                className="text-white hover:bg-white/20"
+              >
+                <X className="h-6 w-6" />
+              </Button>
             </div>
 
-            {/* Main Image */}
-            <div className="flex-1 flex items-center justify-center p-4 pt-20 pb-20">
-              <div className={`relative transition-transform duration-300 ${isZoomed ? "scale-150" : "scale-100"}`}>
-                <Image
-                  src={`data:${allImages[currentImageIndex]?.image_name.split(".").pop()};base64,${allImages[currentImageIndex]?.image_data}`}
-                  alt={allImages[currentImageIndex]?.image_name}
-                  width={800}
-                  height={600}
-                  className="max-w-full max-h-full object-contain rounded-lg"
-                  priority
-                />
+            {/* Scrollable Gallery Grid */}
+            <div className="h-full overflow-y-auto pt-24 pb-8 px-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
+                {images.map((image, index) => (
+                  <div
+                    key={image.id}
+                    className="relative aspect-square rounded-lg overflow-hidden bg-slate-800 hover:scale-105 transition-transform duration-300 cursor-pointer group"
+                  >
+                    <Image
+                      src={`data:${image.image_name.split(".").pop()};base64,${image.image_data}`}
+                      alt={image.image_name}
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+                    <div className="absolute bottom-2 left-2 right-2 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <p className="text-sm font-medium truncate">{image.image_name}</p>
+                      {image.is_primary && (
+                        <Badge className="mt-1 bg-white/20 text-white border-white/30">Primary</Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-
-            {/* Navigation Arrows */}
-            {allImages.length > 1 && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  onClick={prevImage}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 z-40"
-                >
-                  <ChevronLeft className="h-8 w-8" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  onClick={nextImage}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 z-40"
-                >
-                  <ChevronRight className="h-8 w-8" />
-                </Button>
-              </>
-            )}
-
-            {/* Vertical Thumbnail Strip */}
-            {allImages.length > 1 && (
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 z-50 max-h-96 overflow-y-auto">
-                <div className="flex flex-col gap-2 p-2 bg-black/30 rounded-lg backdrop-blur-sm">
-                  {allImages.map((image, index) => (
-                    <button
-                      key={image.id}
-                      onClick={() => {
-                        setCurrentImageIndex(index)
-                        setIsZoomed(false)
-                      }}
-                      className={`relative flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${
-                        index === currentImageIndex ? "border-white scale-110" : "border-white/30 hover:border-white/60"
-                      }`}
-                    >
-                      <Image
-                        src={`data:${image.image_name.split(".").pop()};base64,${image.image_data}`}
-                        alt={image.image_name}
-                        fill
-                        className="object-cover"
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -383,6 +281,79 @@ export function BarberLandingPage({
                 </CardContent>
               </Card>
             </section>
+
+            {/* Gallery Section */}
+            {images.length > 0 && (
+              <section>
+                <h2 className="text-3xl font-bold text-slate-900 mb-6">Gallery</h2>
+                <Card>
+                  <CardContent className="p-6">
+                    {/* Main Image */}
+                    {mainImage && (
+                      <div className="mb-6">
+                        <div
+                          className="relative aspect-video rounded-lg overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform duration-300 group"
+                          onClick={() => openFullScreenGallery(0)}
+                        >
+                          <Image
+                            src={`data:${mainImage.image_name.split(".").pop()};base64,${mainImage.image_data}`}
+                            alt={mainImage.image_name}
+                            fill
+                            className="object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
+                          <div className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            Click to view all photos
+                          </div>
+                          {mainImage.is_primary && (
+                            <div className="absolute top-4 left-4">
+                              <Badge className="bg-white/90 text-slate-900">Featured Photo</Badge>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Thumbnail Grid */}
+                    {thumbnailImages.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4">More Photos ({thumbnailImages.length})</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {thumbnailImages.slice(0, 8).map((image, index) => (
+                            <div
+                              key={image.id}
+                              className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform duration-300 group"
+                              onClick={() => openFullScreenGallery(index + 1)}
+                            >
+                              <Image
+                                src={`data:${image.image_name.split(".").pop()};base64,${image.image_data}`}
+                                alt={image.image_name}
+                                fill
+                                className="object-cover"
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* View All Button */}
+                        {images.length > 9 && (
+                          <div className="mt-4 text-center">
+                            <Button
+                              variant="outline"
+                              onClick={() => openFullScreenGallery(0)}
+                              className="hover:bg-slate-50"
+                            >
+                              View All {images.length} Photos
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </section>
+            )}
 
             {/* Services Section - Reduced Size */}
             <section>
