@@ -12,13 +12,11 @@ import {
   Clock,
   Star,
   ExternalLink,
-  Instagram,
-  Facebook,
-  Twitter,
-  Globe,
   Scissors,
   X,
 } from "lucide-react"
+import { FaInstagram, FaFacebook, FaTwitter } from "react-icons/fa"
+import { FaGlobe } from "react-icons/fa"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -127,7 +125,7 @@ export function BarberLandingPage({
             <div className="flex items-center gap-4">
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/profile/${store.slug}`}>
-                  <Globe className="h-4 w-4 mr-2" />
+                  <FaGlobe className="h-4 w-4 mr-2" />
                   My Profile
                 </Link>
               </Button>
@@ -474,21 +472,21 @@ export function BarberLandingPage({
                         {landingPageData.social_links.instagram && (
                           <Button variant="outline" size="icon" asChild>
                             <Link href={landingPageData.social_links.instagram} target="_blank">
-                              <Instagram className="h-4 w-4" />
+                              <FaInstagram className="h-4 w-4" />
                             </Link>
                           </Button>
                         )}
                         {landingPageData.social_links.facebook && (
                           <Button variant="outline" size="icon" asChild>
                             <Link href={landingPageData.social_links.facebook} target="_blank">
-                              <Facebook className="h-4 w-4" />
+                              <FaFacebook className="h-4 w-4" />
                             </Link>
                           </Button>
                         )}
                         {landingPageData.social_links.twitter && (
                           <Button variant="outline" size="icon" asChild>
                             <Link href={landingPageData.social_links.twitter} target="_blank">
-                              <Twitter className="h-4 w-4" />
+                              <FaTwitter className="h-4 w-4" />
                             </Link>
                           </Button>
                         )}
