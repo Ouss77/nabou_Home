@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Users, Calendar, Plus, LogOut, Scissors } from "lucide-react"
 import { CreateBarberDialog } from "@/components/create-barber-dialog"
+import { ProductManagement } from "@/components/product-management"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useLanguage } from "@/components/language-provider"
@@ -56,37 +57,29 @@ function StatusBadge({ status }: { status: "trial" | "active" | "expired" }) {
     expired: "bg-red-100 text-red-800",
   }
 
-  return (
-    <span className={`px-2 py-1 text-xs rounded font-medium ${colorMap[status]}`}>
-      {status}
-    </span>
-  )
+  return <span className={`px-2 py-1 text-xs rounded font-medium ${colorMap[status]}`}>{status}</span>
 }
-export function AdminDashboard({ user, barbers: initialBarbers, appointments }: AdminDashboardProps) {
 
+export function AdminDashboard({ user, barbers: initialBarbers, appointments }: AdminDashboardProps) {
   const { t, language } = useLanguage()
-  const [barbers, setBarbers] = useState(initialBarbers) // ← now barbers is reactive
+  const [barbers, setBarbers] = useState(initialBarbers)
   const [showCreateBarber, setShowCreateBarber] = useState(false)
   const router = useRouter()
-  
-const handleStatusChange = async (barberId: string, newStatus: "trial" | "active" | "expired") => {
-  const updated = barbers.map((barber) =>
-    barber.id === barberId ? { ...barber, status: newStatus } : barber
-  )
-  setBarbers(updated)
 
-  // ✅ Correct URL here
-  const response = await fetch(`/api/admin/barbers/${barberId}/status`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status: newStatus }),
-  })
+  const handleStatusChange = async (barberId: string, newStatus: "trial" | "active" | "expired") => {
+    const updated = barbers.map((barber) => (barber.id === barberId ? { ...barber, status: newStatus } : barber))
+    setBarbers(updated)
 
-  if (!response.ok) {
-    console.error("Failed to update barber status:", await response.json())
+    const response = await fetch(`/api/admin/barbers/${barberId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    })
+
+    if (!response.ok) {
+      console.error("Failed to update barber status:", await response.json())
+    }
   }
-}
-
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" })
@@ -162,6 +155,7 @@ const handleStatusChange = async (barberId: string, newStatus: "trial" | "active
           <TabsList>
             <TabsTrigger value="barbers">{t.admin.barbers}</TabsTrigger>
             <TabsTrigger value="appointments">{t.admin.allAppointments}</TabsTrigger>
+            <TabsTrigger value="products">Products</TabsTrigger>
           </TabsList>
 
           <TabsContent value="barbers">
@@ -197,24 +191,30 @@ const handleStatusChange = async (barberId: string, newStatus: "trial" | "active
                         <TableCell>
                           <Badge variant="secondary">{barber.appointment_count}</Badge>
                         </TableCell>
-<TableCell>
-<select
-  value={barber.status}
-  onChange={(e) => handleStatusChange(barber.id, e.target.value as "trial" | "active" | "expired")}
-  className={`
-    text-xs font-medium rounded px-2 py-1
-    ${barber.status === "trial" && "bg-yellow-100 text-yellow-800"}
-    ${barber.status === "active" && "bg-green-100 text-green-800"}
-    ${barber.status === "expired" && "bg-red-100 text-red-800"}
-  `}
->
-  <option value="trial" className="bg-yellow-100 text-yellow-800">Trial</option>
-  <option value="active" className="bg-green-100 text-green-800">Active</option>
-  <option value="expired" className="bg-red-100 text-red-800">Expired</option>
-</select>
-
-</TableCell>
-
+                        <TableCell>
+                          <select
+                            value={barber.status}
+                            onChange={(e) =>
+                              handleStatusChange(barber.id, e.target.value as "trial" | "active" | "expired")
+                            }
+                            className={`
+                              text-xs font-medium rounded px-2 py-1
+                              ${barber.status === "trial" && "bg-yellow-100 text-yellow-800"}
+                              ${barber.status === "active" && "bg-green-100 text-green-800"}
+                              ${barber.status === "expired" && "bg-red-100 text-red-800"}
+                            `}
+                          >
+                            <option value="trial" className="bg-yellow-100 text-yellow-800">
+                              Trial
+                            </option>
+                            <option value="active" className="bg-green-100 text-green-800">
+                              Active
+                            </option>
+                            <option value="expired" className="bg-red-100 text-red-800">
+                              Expired
+                            </option>
+                          </select>
+                        </TableCell>
                         <TableCell>{new Date(barber.created_at).toLocaleDateString()}</TableCell>
                       </TableRow>
                     ))}
@@ -273,6 +273,10 @@ const handleStatusChange = async (barberId: string, newStatus: "trial" | "active
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="products">
+            <ProductManagement />
           </TabsContent>
         </Tabs>
       </div>

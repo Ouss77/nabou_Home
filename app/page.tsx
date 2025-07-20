@@ -51,7 +51,7 @@ export default function HomePage() {
   const { toast } = useToast()
   const [showRegistration, setShowRegistration] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [stores, setStores] = useState<Store[]>([])
+  const [featuredStores, setFeaturedStores] = useState<Store[]>([])
   const [loadingStores, setLoadingStores] = useState(true)
   const [storesError, setStoresError] = useState<string | null>(null)
   const [contactForm, setContactForm] = useState({
@@ -61,12 +61,12 @@ export default function HomePage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Fetch stores on component mount
+  // Fetch featured stores on component mount
   useEffect(() => {
-    fetchStores()
+    fetchFeaturedStores()
   }, [])
 
-  const fetchStores = async () => {
+  const fetchFeaturedStores = async () => {
     try {
       setLoadingStores(true)
       setStoresError(null)
@@ -77,11 +77,12 @@ export default function HomePage() {
       }
 
       const storesData = await response.json()
-      setStores(Array.isArray(storesData) ? storesData : [])
+      // Show only the first 3 stores as featured
+      setFeaturedStores(Array.isArray(storesData) ? storesData.slice(0, 3) : [])
     } catch (error) {
       console.error("Error fetching stores:", error)
-      setStoresError("Unable to load store locations. Please try again later.")
-      setStores([])
+      setStoresError("Unable to load featured stores. Please try again later.")
+      setFeaturedStores([])
     } finally {
       setLoadingStores(false)
     }
@@ -164,8 +165,20 @@ export default function HomePage() {
                   onClick={() => scrollToSection("stores")}
                   className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200"
                 >
-                  Stores
+                  Featured Stores
                 </button>
+                <Link
+                  href="/stores"
+                  className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200"
+                >
+                  All Stores
+                </Link>
+                <Link
+                  href="/products"
+                  className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200"
+                >
+                  Shop
+                </Link>
                 <button
                   onClick={() => scrollToSection("contact")}
                   className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200"
@@ -223,8 +236,20 @@ export default function HomePage() {
                   onClick={() => scrollToSection("stores")}
                   className="block text-gray-600 hover:text-gray-900 font-medium py-2 w-full text-left"
                 >
-                  Stores
+                  Featured Stores
                 </button>
+                <Link
+                  href="/stores"
+                  className="block text-gray-600 hover:text-gray-900 font-medium py-2 w-full text-left"
+                >
+                  All Stores
+                </Link>
+                <Link
+                  href="/products"
+                  className="block text-gray-600 hover:text-gray-900 font-medium py-2 w-full text-left"
+                >
+                  Shop
+                </Link>
                 <button
                   onClick={() => scrollToSection("contact")}
                   className="block text-gray-600 hover:text-gray-900 font-medium py-2 w-full text-left"
@@ -461,13 +486,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Dynamic Stores Section */}
+      {/* Featured Stores Section */}
       <section id="stores" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Our Store Locations</h2>
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Featured Barbershops</h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Find a location near you and book your appointment today
+              Discover top-rated barbershops and book your appointment today
             </p>
           </div>
 
@@ -476,7 +501,7 @@ export default function HomePage() {
             <div className="flex justify-center items-center py-12">
               <div className="text-center">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-                <p className="text-gray-600">Loading store locations...</p>
+                <p className="text-gray-600">Loading featured stores...</p>
               </div>
             </div>
           )}
@@ -489,22 +514,22 @@ export default function HomePage() {
                 <AlertDescription>{storesError}</AlertDescription>
               </Alert>
               <div className="text-center mt-4">
-                <Button onClick={fetchStores} variant="outline">
+                <Button onClick={fetchFeaturedStores} variant="outline">
                   Try Again
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Stores Grid */}
+          {/* Featured Stores Grid */}
           {!loadingStores && !storesError && (
             <>
-              {stores.length === 0 ? (
+              {featuredStores.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <MapPin className="h-8 w-8 text-gray-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Stores Available</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Featured Stores Available</h3>
                   <p className="text-gray-600 mb-6">We're currently setting up new locations. Check back soon!</p>
                   <Button onClick={() => setShowRegistration(true)}>
                     Register Your Store
@@ -512,11 +537,23 @@ export default function HomePage() {
                   </Button>
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {stores.map((store) => (
-                    <StoreCard key={store.id} store={store} />
-                  ))}
-                </div>
+                <>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+                    {featuredStores.map((store) => (
+                      <StoreCard key={store.id} store={store} />
+                    ))}
+                  </div>
+
+                  {/* View All Stores Button */}
+                  <div className="text-center">
+                    <Link href="/stores">
+                      <Button size="lg" variant="outline" className="px-8 py-4 text-lg font-semibold bg-transparent">
+                        View All Stores
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </Button>
+                    </Link>
+                  </div>
+                </>
               )}
             </>
           )}
@@ -742,12 +779,19 @@ function StoreCard({ store }: StoreCardProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <Link href={`/book/${store.slug}`}>
-          <Button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
-            Book Appointment
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href={`/profile/${store.slug}`} className="flex-1">
+            <Button variant="outline" className="w-full bg-transparent">
+              View Profile
+            </Button>
+          </Link>
+          <Link href={`/book/${store.slug}`} className="flex-1">
+            <Button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
+              Book Now
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
       </CardContent>
     </Card>
   )
