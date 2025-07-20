@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import {
   Calendar,
   MapPin,
@@ -18,6 +19,10 @@ import {
   Scissors,
   ChevronLeft,
   ChevronRight,
+  X,
+  ZoomIn,
+  ZoomOut,
+  Images,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -91,16 +96,25 @@ export function BarberLandingPage({
   landingPageData = {},
 }: BarberLandingPageProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [showGallery, setShowGallery] = useState(false)
+  const [isZoomed, setIsZoomed] = useState(false)
 
   const primaryImage = images.find((img) => img.is_primary) || images[0]
   const galleryImages = images.filter((img) => !img.is_primary)
+  const allImages = images
 
   const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % galleryImages.length)
+    setCurrentImageIndex((prev) => (prev + 1) % allImages.length)
+    setIsZoomed(false)
   }
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length)
+    setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length)
+    setIsZoomed(false)
+  }
+
+  const toggleZoom = () => {
+    setIsZoomed(!isZoomed)
   }
 
   const getDayName = (dayIndex: number) => {
@@ -117,7 +131,33 @@ export function BarberLandingPage({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Hero Section */}
+      {/* Navigation Bar */}
+      <nav className="bg-white/95 backdrop-blur-sm border-b sticky top-0 z-40">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2 hover:gap-3 transition-all">
+              <Scissors className="h-6 w-6 text-slate-800" />
+              <span className="text-xl font-bold text-slate-800">BarberBook</span>
+            </Link>
+            <div className="flex items-center gap-4">
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/profile/${store.slug}`}>
+                  <Globe className="h-4 w-4 mr-2" />
+                  My Profile
+                </Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link href={`/book/${store.slug}`}>
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Book Now
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section with Image Gallery */}
       <section className="relative bg-gradient-to-r from-slate-900 to-slate-700 text-white">
         <div className="absolute inset-0 bg-black/20" />
         {primaryImage && (
@@ -130,17 +170,61 @@ export function BarberLandingPage({
             />
           </div>
         )}
-        <div className="relative container mx-auto px-4 py-20">
+        <div className="relative container mx-auto px-4 py-16">
           <div className="max-w-4xl mx-auto text-center">
             <div className="flex items-center justify-center gap-2 mb-4">
               <Scissors className="h-8 w-8" />
               <span className="text-sm font-medium tracking-wide uppercase">Professional Barber</span>
             </div>
-            <h1 className="text-5xl md:text-6xl font-bold mb-6">{store.barber_name}</h1>
-            <p className="text-xl md:text-2xl text-slate-200 mb-8">{store.title}</p>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">{store.barber_name}</h1>
+            <p className="text-xl md:text-2xl text-slate-200 mb-6">{store.title}</p>
             {landingPageData.bio && (
               <p className="text-lg text-slate-300 mb-8 max-w-2xl mx-auto">{landingPageData.bio}</p>
             )}
+
+            {/* Image Preview Grid */}
+            {images.length > 0 && (
+              <div className="mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-w-2xl mx-auto">
+                  {images.slice(0, 4).map((image, index) => (
+                    <div
+                      key={image.id}
+                      className="aspect-square relative rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform"
+                      onClick={() => {
+                        setCurrentImageIndex(index)
+                        setShowGallery(true)
+                      }}
+                    >
+                      <Image
+                        src={`data:${image.image_name.split(".").pop()};base64,${image.image_data}`}
+                        alt={`Gallery ${index + 1}`}
+                        fill
+                        className="object-cover"
+                      />
+                      {index === 3 && images.length > 4 && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                          <div className="text-white text-center">
+                            <Images className="h-6 w-6 mx-auto mb-1" />
+                            <span className="text-sm font-medium">+{images.length - 4} more</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {images.length > 4 && (
+                  <Button
+                    variant="outline"
+                    className="mt-4 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    onClick={() => setShowGallery(true)}
+                  >
+                    <Images className="h-4 w-4 mr-2" />
+                    View All Photos ({images.length})
+                  </Button>
+                )}
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" asChild className="bg-white text-slate-900 hover:bg-slate-100">
                 <Link href={`/book/${store.slug}`}>
@@ -166,6 +250,99 @@ export function BarberLandingPage({
           </div>
         </div>
       </section>
+
+      {/* Gallery Modal */}
+      <Dialog open={showGallery} onOpenChange={setShowGallery}>
+        <DialogContent className="max-w-7xl max-h-[95vh] p-0 bg-black/95 border-none">
+          <div className="relative w-full h-full flex flex-col">
+            {/* Header */}
+            <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent">
+              <div className="text-white">
+                <h3 className="text-lg font-semibold">{allImages[currentImageIndex]?.image_name}</h3>
+                <p className="text-sm text-white/70">
+                  {currentImageIndex + 1} of {allImages.length}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={toggleZoom} className="text-white hover:bg-white/20">
+                  {isZoomed ? <ZoomOut className="h-4 w-4" /> : <ZoomIn className="h-4 w-4" />}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowGallery(false)}
+                  className="text-white hover:bg-white/20"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Main Image */}
+            <div className="flex-1 flex items-center justify-center p-4 pt-20 pb-20">
+              <div className={`relative transition-transform duration-300 ${isZoomed ? "scale-150" : "scale-100"}`}>
+                <Image
+                  src={`data:${allImages[currentImageIndex]?.image_name.split(".").pop()};base64,${allImages[currentImageIndex]?.image_data}`}
+                  alt={allImages[currentImageIndex]?.image_name}
+                  width={800}
+                  height={600}
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                  priority
+                />
+              </div>
+            </div>
+
+            {/* Navigation Arrows */}
+            {allImages.length > 1 && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  onClick={prevImage}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 z-40"
+                >
+                  <ChevronLeft className="h-8 w-8" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  onClick={nextImage}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 z-40"
+                >
+                  <ChevronRight className="h-8 w-8" />
+                </Button>
+              </>
+            )}
+
+            {/* Vertical Thumbnail Strip */}
+            {allImages.length > 1 && (
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 z-50 max-h-96 overflow-y-auto">
+                <div className="flex flex-col gap-2 p-2 bg-black/30 rounded-lg backdrop-blur-sm">
+                  {allImages.map((image, index) => (
+                    <button
+                      key={image.id}
+                      onClick={() => {
+                        setCurrentImageIndex(index)
+                        setIsZoomed(false)
+                      }}
+                      className={`relative flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${
+                        index === currentImageIndex ? "border-white scale-110" : "border-white/30 hover:border-white/60"
+                      }`}
+                    >
+                      <Image
+                        src={`data:${image.image_name.split(".").pop()};base64,${image.image_data}`}
+                        alt={image.image_name}
+                        fill
+                        className="object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="container mx-auto px-4 py-16">
         <div className="grid lg:grid-cols-3 gap-12">
@@ -207,24 +384,24 @@ export function BarberLandingPage({
               </Card>
             </section>
 
-            {/* Services Section */}
+            {/* Services Section - Reduced Size */}
             <section>
               <h2 className="text-3xl font-bold text-slate-900 mb-6">Services & Pricing</h2>
-              <div className="grid gap-4">
+              <div className="grid gap-3">
                 {services.map((service) => (
                   <Card key={service.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
+                    <CardContent className="p-4">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <h3 className="text-xl font-semibold text-slate-900 mb-2">{service.name}</h3>
-                          <p className="text-slate-600 mb-2">{service.description}</p>
+                          <h3 className="text-lg font-semibold text-slate-900 mb-1">{service.name}</h3>
+                          <p className="text-slate-600 text-sm mb-2">{service.description}</p>
                           <div className="flex items-center gap-2 text-sm text-slate-500">
-                            <Clock className="h-4 w-4" />
+                            <Clock className="h-3 w-3" />
                             <span>{service.duration_minutes} minutes</span>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-slate-900">{formatPrice(service.price)}</div>
+                          <div className="text-xl font-bold text-slate-900">{formatPrice(service.price)}</div>
                         </div>
                       </div>
                     </CardContent>
@@ -232,66 +409,6 @@ export function BarberLandingPage({
                 ))}
               </div>
             </section>
-
-            {/* Gallery Section */}
-            {galleryImages.length > 0 && (
-              <section>
-                <h2 className="text-3xl font-bold text-slate-900 mb-6">Gallery</h2>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="relative">
-                      <div className="aspect-video relative rounded-lg overflow-hidden">
-                        <Image
-                          src={`data:${galleryImages[currentImageIndex]?.image_name.split(".").pop()};base64,${galleryImages[currentImageIndex]?.image_data}`}
-                          alt={`Gallery image ${currentImageIndex + 1}`}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      {galleryImages.length > 1 && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
-                            onClick={prevImage}
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
-                            onClick={nextImage}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                    <div className="flex gap-2 mt-4 overflow-x-auto">
-                      {galleryImages.map((image, index) => (
-                        <button
-                          key={image.id}
-                          onClick={() => setCurrentImageIndex(index)}
-                          className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${
-                            index === currentImageIndex ? "border-slate-900" : "border-transparent"
-                          }`}
-                        >
-                          <Image
-                            src={`data:${image.image_name.split(".").pop()};base64,${image.image_data}`}
-                            alt={`Thumbnail ${index + 1}`}
-                            width={64}
-                            height={64}
-                            className="object-cover w-full h-full"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </section>
-            )}
 
             {/* Testimonials Section */}
             {landingPageData.testimonials && landingPageData.testimonials.length > 0 && (
