@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useLayoutEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { Loader2 } from "lucide-react"
@@ -26,6 +26,7 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
   const [store, setStore] = useState<Store | null>(null)
   const [selectedActivity, setSelectedActivity] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
+  const dialogContentRef = useRef<HTMLDivElement>(null);
 
   // Reset wizard state when dialog opens/closes
   useEffect(() => {
@@ -36,6 +37,13 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
       setIsLoading(false)
     }
   }, [open])
+
+  // Scroll to top when step changes
+  useEffect(() => {
+    if (dialogContentRef.current) {
+      dialogContentRef.current.scrollTop = 0
+    }
+  }, [currentStep])
 
   const handleNext = () => {
     setCurrentStep((prev) => Math.min(prev + 1, WIZARD_STEPS.length))
@@ -128,26 +136,22 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
   }
 
   return (
-<DialogContent className="max-w-5xl h-[90vh] flex flex-col overflow-hidden">
-  <DialogHeader className="px-6 pt-6">
-    <DialogTitle className="text-2xl font-bold">
-      Welcome! Let's Set Up Your Store
-    </DialogTitle>
-    <DialogDescription>
-      Follow these steps to create your profile and start accepting appointments.
-    </DialogDescription>
-  </DialogHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold">Welcome! Let's Set Up Your Store</DialogTitle>
+          <DialogDescription>
+            Follow these steps to create your profile and start accepting appointments.
+          </DialogDescription>
+        </DialogHeader>
 
-  <div className="px-6 py-4">
-    <Progress value={(currentStep / WIZARD_STEPS.length) * 100} className="mb-4" />
-    <StepIndicator steps={WIZARD_STEPS} currentStep={currentStep} />
-  </div>
+        <div className="px-6 py-4">
+          <Progress value={(currentStep / WIZARD_STEPS.length) * 100} className="mb-4" />
+          <StepIndicator steps={WIZARD_STEPS} currentStep={currentStep} />
+        </div>
 
-  {/* Scrollable content that prevents overflow on X axis */}
-  <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6">
-    {renderStepContent()}
-  </div>
-</DialogContent>
-
+        <div ref={dialogContentRef} className="flex-1 overflow-y-auto px-6 pb-6">{renderStepContent()}</div>
+      </DialogContent>
+    </Dialog>
   )
 }
