@@ -21,7 +21,7 @@ interface Step4ImagesProps {
   onBack: () => void
 }
 
-export function Step4Images({ storeId, onFinish, onBack }: Step4ImagesProps) {
+export function Step5Images({ storeId, onFinish, onBack }: Step4ImagesProps) {
   const [images, setImages] = useState<StoreImage[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const { toast } = useToast()
