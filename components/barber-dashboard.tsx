@@ -16,24 +16,25 @@ import {
   ExternalLink,
   Settings,
   Clock,
-  Globe,
   Copy,
   RefreshCw,
+  Globe,
 } from "lucide-react"
 import { StoreSetupDialog } from "@/components/store-setup-dialog"
-import {StoreSetupWizard} from "@/components/store-setup-wizard"
+import { StoreSetupWizard } from "@/components/store-setup-wizard"
 import { ServiceManagementDialog } from "@/components/service-management-dialog"
 import { BlockTimeDialog } from "@/components/block-time-dialog"
 import { AppointmentCalendar } from "@/components/appointment-calendar"
 import { ImageUpload } from "@/components/image-upload"
 import { AnalyticsDashboard } from "@/components/analytics-dashboard"
 import { AppointmentStatusSelector } from "@/components/appointment-status-selector"
+import { LandingPageEditor } from "@/components/landing-page-editor"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useLanguage } from "@/components/language-provider"
 import { useToast } from "@/hooks/use-toast"
 import { formatCurrency } from "@/lib/currency-utils"
-import { LandingPageEditor } from "./landing-page-editor"
+
 interface User {
   id: string
   email: string
@@ -109,11 +110,9 @@ interface BarberDashboardProps {
   user: User
   storeId: string
   store: StoreProps | null
-  //services: Service[]
   appointments: Appointment[]
   workingHours: WorkingHours[]
   userStatus?: string
-
 }
 
 export function BarberDashboard({
@@ -121,7 +120,6 @@ export function BarberDashboard({
   store,
   storeId,
   userStatus,
-  //services: initialServices,
   appointments: initialAppointments,
   workingHours,
 }: BarberDashboardProps) {
@@ -141,12 +139,12 @@ export function BarberDashboard({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<"basic" | "images" | "hours">("basic")
   const [showStoreSetupWizard, setShowStoreSetupWizard] = useState(false)
-  const [landingPageData, setLandingPageData] = useState<any>(null)
 
   const router = useRouter()
 
-    const isTrialExpired = userStatus === "expired"
-    console.log("User status:", userStatus)
+  const isTrialExpired = userStatus === "expired"
+  console.log("User status:", userStatus)
+
   const fetchServices = async () => {
     const res = await fetch(`/api/barber/services?storeId=${storeId}`)
     const data = await res.json()
@@ -176,15 +174,6 @@ export function BarberDashboard({
     }
   }, [storeId, store?.id])
 
-  useEffect(() => {
-    if (store?.id) {
-      fetch(`/api/barber/landing-page?storeId=${store.id}`)
-        .then((res) => res.json())
-        .then(setLandingPageData)
-        .catch(console.error)
-    }
-  }, [store?.id])
- 
   const refreshDashboardData = useCallback(async () => {
     if (!store?.id) return
 
@@ -286,6 +275,26 @@ export function BarberDashboard({
         toast({
           title: t.common?.error || "Error",
           description: "Failed to copy link to clipboard.",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  const handleCopyProfileLink = async () => {
+    if (store?.slug) {
+      const profilePageUrl = `${window.location.origin}/profile/${store.slug}`
+      try {
+        await navigator.clipboard.writeText(profilePageUrl)
+        toast({
+          title: "Profile Link Copied",
+          description: profilePageUrl,
+        })
+      } catch (err) {
+        console.error("Failed to copy profile link:", err)
+        toast({
+          title: "Error",
+          description: "Failed to copy profile link to clipboard.",
           variant: "destructive",
         })
       }
@@ -412,319 +421,355 @@ export function BarberDashboard({
         }
       `}</style>
 
-                <div className="hidden md:grid md:grid-cols-4 m-5 gap-6 mb-8">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {t.barberDashboard?.todayAppointments || "Today's Appointments"}
-                  </CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{todayAppointments}</div>
-                  <p className="text-xs text-muted-foreground">Live count</p>
-                </CardContent>
-              </Card>
+      <div className="hidden md:grid md:grid-cols-4 m-5 gap-6 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {t.barberDashboard?.todayAppointments || "Today's Appointments"}
+            </CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{todayAppointments}</div>
+            <p className="text-xs text-muted-foreground">Live count</p>
+          </CardContent>
+        </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {t.barberDashboard?.totalAppointments || "Total Appointments"}
-                  </CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{appointments.length}</div>
-                  <p className="text-xs text-muted-foreground">All time</p>
-                </CardContent>
-              </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {t.barberDashboard?.totalAppointments || "Total Appointments"}
+            </CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{appointments.length}</div>
+            <p className="text-xs text-muted-foreground">All time</p>
+          </CardContent>
+        </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{t.barberDashboard?.services || "Services"}</CardTitle>
-                  <Scissors className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{services.length}</div>
-                  <p className="text-xs text-muted-foreground">Active services</p>
-                </CardContent>
-              </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t.barberDashboard?.services || "Services"}</CardTitle>
+            <Scissors className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{services.length}</div>
+            <p className="text-xs text-muted-foreground">Active services</p>
+          </CardContent>
+        </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {t.barberDashboard?.totalRevenue || "Total Revenue"}
-                  </CardTitle>
-                  <Store className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{totalRevenue(appointments, services)} €</div>
-                  <p className="text-xs text-muted-foreground">Completed bookings</p>
-                </CardContent>
-              </Card>
-            </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t.barberDashboard?.totalRevenue || "Total Revenue"}</CardTitle>
+            <Store className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalRevenue(appointments, services)} €</div>
+            <p className="text-xs text-muted-foreground">Completed bookings</p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Main Content */}
-      {!isTrialExpired && (  <div className="p-4 sm:p-6">
-        {!store ? (
-          // Store Setup Required
-          <div className="max-w-2xl mx-auto text-center py-12">
-            <Store className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">
-              {t.barberDashboard?.setUpStore || "Set Up Your Store"}
-            </h2>
-            <p className="text-slate-600 mb-6">
-              {t.barberDashboard?.createProfile || "Create your barber profile to start accepting appointments"}
-            </p>
-<Button onClick={() => setShowStoreSetupWizard(true)} size="lg">
-  <Plus className="h-4 w-4 mr-2" />
-  {t.barberDashboard?.createStore || "Create Store"}
-</Button>
+      {!isTrialExpired && (
+        <div className="p-4 sm:p-6">
+          {!store ? (
+            // Store Setup Required
+            <div className="max-w-2xl mx-auto text-center py-12">
+              <Store className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-slate-800 mb-2">
+                {t.barberDashboard?.setUpStore || "Set Up Your Store"}
+              </h2>
+              <p className="text-slate-600 mb-6">
+                {t.barberDashboard?.createProfile || "Create your barber profile to start accepting appointments"}
+              </p>
+              <Button onClick={() => setShowStoreSetupWizard(true)} size="lg">
+                <Plus className="h-4 w-4 mr-2" />
+                {t.barberDashboard?.createStore || "Create Store"}
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* Main Content */}
+              <Tabs defaultValue="appointments" className="space-y-6">
+                <TabsList>
+                  <TabsTrigger value="appointments">{t.admin?.appointments || "Appointments"}</TabsTrigger>
+                  <TabsTrigger value="calendar">
+                    {t.barberDashboard?.appointmentCalendar || "Appointment Calendar"}
+                  </TabsTrigger>
+                  <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                  <TabsTrigger value="store">{t.barberDashboard?.storeInformation || "Store Information"}</TabsTrigger>
+                  <TabsTrigger value="my-website">
+                    <Globe className="h-4 w-4 mr-2" />
+                    My Website
+                  </TabsTrigger>
+                </TabsList>
 
-          </div>
-        ) : (
-          <>
-            {/* Stats Cards - Using live data */}
-
-
-            {/* Main Content */}
-            <Tabs defaultValue="appointments" className="space-y-6">
-              <TabsList>
-                <TabsTrigger value="appointments">{t.admin?.appointments || "Appointments"}</TabsTrigger>
-                <TabsTrigger value="calendar">
-                  {t.barberDashboard?.appointmentCalendar || "Appointment Calendar"}
-                </TabsTrigger>
-                <TabsTrigger value="analytics">Analytics</TabsTrigger>
-                <TabsTrigger value="store">{t.barberDashboard?.storeInformation || "Store Information"}</TabsTrigger>
-                <TabsTrigger value="landing-page-editor">
-                  {t.barberDashboard?.landingPageEditor || "Landing Page Editor"}
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="appointments">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>{t.barberDashboard?.recentAppointments || "Recent Appointments"}</CardTitle>
-                        <CardDescription>
-                          {t.barberDashboard?.viewManage || "View and manage your appointments"} • Last updated:{" "}
-                          {lastDataUpdate.toLocaleTimeString()}
-                        </CardDescription>
+                <TabsContent value="appointments">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle>{t.barberDashboard?.recentAppointments || "Recent Appointments"}</CardTitle>
+                          <CardDescription>
+                            {t.barberDashboard?.viewManage || "View and manage your appointments"} • Last updated:{" "}
+                            {lastDataUpdate.toLocaleTimeString()}
+                          </CardDescription>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={refreshDashboardData} disabled={isRefreshing}>
+                          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+                          Refresh
+                        </Button>
                       </div>
-                      <Button variant="outline" size="sm" onClick={refreshDashboardData} disabled={isRefreshing}>
-                        <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-                        Refresh
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>{t.admin?.client || "Client"}</TableHead>
-                            <TableHead>{t.booking?.service || "Service"}</TableHead>
-                            <TableHead>{t.booking?.date || "Date"}</TableHead>
-                            <TableHead>{t.booking?.time || "Time"}</TableHead>
-                            <TableHead>{t.admin?.status || "Status"}</TableHead>
-                            <TableHead>{t.booking?.price || "Price"}</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {appointments.map((appointment) => (
-                            <TableRow key={appointment.id}>
-                              <TableCell>
-                                <div>
-                                  <div className="font-medium">{appointment.client_name}</div>
-                                  <div className="text-sm text-muted-foreground">{appointment.client_email}</div>
-                                  {appointment.client_phone && (
-                                    <div className="text-sm text-muted-foreground">{appointment.client_phone}</div>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div>
-                                  <div className="font-medium">{appointment.service_name}</div>
-                                  {appointment.notes && (
-                                    <div className="text-sm text-muted-foreground">{appointment.notes}</div>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>{new Date(appointment.appointment_date).toLocaleDateString()}</TableCell>
-                              <TableCell>{appointment.appointment_time}</TableCell>
-                              <TableCell>
-                                <AppointmentStatusSelector
-                                  appointmentId={appointment.id}
-                                  currentStatus={appointment.status}
-                                  onStatusChange={(newStatus) => handleStatusChange(appointment.id, newStatus)}
-                                />
-                              </TableCell>
-                              <TableCell>{formatCurrency(appointment.service_price, language)}</TableCell>
-                            </TableRow>
-                          ))}
-                          {appointments.length === 0 && (
+                    </CardHeader>
+                    <CardContent>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                No appointments found. Your upcoming bookings will appear here.
-                              </TableCell>
+                              <TableHead>{t.admin?.client || "Client"}</TableHead>
+                              <TableHead>{t.booking?.service || "Service"}</TableHead>
+                              <TableHead>{t.booking?.date || "Date"}</TableHead>
+                              <TableHead>{t.booking?.time || "Time"}</TableHead>
+                              <TableHead>{t.admin?.status || "Status"}</TableHead>
+                              <TableHead>{t.booking?.price || "Price"}</TableHead>
                             </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="calendar">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>{t.barberDashboard?.appointmentCalendar || "Appointment Calendar"}</CardTitle>
-                        <CardDescription>
-                          {t.barberDashboard?.calendarFormat || "View appointments in calendar format"}
-                        </CardDescription>
-                      </div>
-                      <Button onClick={() => setShowBlockTime(true)}>
-                        <Clock className="h-4 w-4 mr-2" />
-                        {t.blockTime?.blockTime || "Block Time"}
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <AppointmentCalendar appointments={appointments} />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="analytics">
-                <AnalyticsDashboard appointments={data.appointments} services={data.services} storeId={storeId} />
-              </TabsContent>
-
-              <TabsContent value="store">
-                <div className="grid gap-6">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle>{t.barberDashboard?.storeInformation || "Store Information"}</CardTitle>
-                          <CardDescription>
-                            {t.barberDashboard?.manageStore || "Manage your store details and settings"}
-                          </CardDescription>
-                        </div>
-                        <Button onClick={() => { setActiveTab("basic"); setShowStoreSetup(true); }} variant="outline">
-                          <Settings className="h-4 w-4 mr-2" />
-                          {t.barberDashboard?.editStore || "Edit Store"}
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div>
-                          <h3 className="font-medium">{store.title}</h3>
-                          <p className="text-sm text-muted-foreground">{store.address}</p>
-                        </div>
-                        {store.description && <p className="text-sm">{store.description}</p>}
+                          </TableHeader>
+                          <TableBody>
+                            {appointments.map((appointment) => (
+                              <TableRow key={appointment.id}>
+                                <TableCell>
+                                  <div>
+                                    <div className="font-medium">{appointment.client_name}</div>
+                                    <div className="text-sm text-muted-foreground">{appointment.client_email}</div>
+                                    {appointment.client_phone && (
+                                      <div className="text-sm text-muted-foreground">{appointment.client_phone}</div>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div>
+                                    <div className="font-medium">{appointment.service_name}</div>
+                                    {appointment.notes && (
+                                      <div className="text-sm text-muted-foreground">{appointment.notes}</div>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>{new Date(appointment.appointment_date).toLocaleDateString()}</TableCell>
+                                <TableCell>{appointment.appointment_time}</TableCell>
+                                <TableCell>
+                                  <AppointmentStatusSelector
+                                    appointmentId={appointment.id}
+                                    currentStatus={appointment.status}
+                                    onStatusChange={(newStatus) => handleStatusChange(appointment.id, newStatus)}
+                                  />
+                                </TableCell>
+                                <TableCell>{formatCurrency(appointment.service_price, language)}</TableCell>
+                              </TableRow>
+                            ))}
+                            {appointments.length === 0 && (
+                              <TableRow>
+                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                  No appointments found. Your upcoming bookings will appear here.
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
                       </div>
                     </CardContent>
                   </Card>
+                </TabsContent>
 
-                  {/* Store Images */}
-                  <ImageUpload storeId={store.id} images={storeImages} onImagesChange={fetchStoreImages} />
-
+                <TabsContent value="calendar">
                   <Card>
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle>{t.barberDashboard?.services || "Services"}</CardTitle>
+                          <CardTitle>{t.barberDashboard?.appointmentCalendar || "Appointment Calendar"}</CardTitle>
                           <CardDescription>
-                            {t.barberDashboard?.managePricing || "Manage your services and pricing"}
+                            {t.barberDashboard?.calendarFormat || "View appointments in calendar format"}
                           </CardDescription>
                         </div>
-                        <Button onClick={() => setShowServiceManagement(true)}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          {t.barberDashboard?.manageServices || "Manage Services"}
+                        <Button onClick={() => setShowBlockTime(true)}>
+                          <Clock className="h-4 w-4 mr-2" />
+                          {t.blockTime?.blockTime || "Block Time"}
                         </Button>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-4">
-                        {services.map((service) => (
-                          <div key={service.id} className="flex items-center justify-between p-4 border rounded-lg">
-                            <div>
-                              <h4 className="font-medium">{service.name}</h4>
-                              <p className="text-sm text-muted-foreground">{service.description}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {service.duration_minutes} {t.booking?.minutes || "minutes"}
-                              </p>
-                            </div>
-                            <div className="text-lg font-bold">{formatCurrency(service.price, language)}</div>
+                      <AppointmentCalendar appointments={appointments} />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="analytics">
+                  <AnalyticsDashboard appointments={data.appointments} services={data.services} storeId={storeId} />
+                </TabsContent>
+
+                <TabsContent value="store">
+                  <div className="grid gap-6">
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle>{t.barberDashboard?.storeInformation || "Store Information"}</CardTitle>
+                            <CardDescription>
+                              {t.barberDashboard?.manageStore || "Manage your store details and settings"}
+                            </CardDescription>
                           </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            <Clock className="h-5 w-5" />
-                            Working Hours
-                          </CardTitle>
-                          <CardDescription>Your business hours for customer bookings</CardDescription>
+                          <Button
+                            onClick={() => {
+                              setActiveTab("basic")
+                              setShowStoreSetup(true)
+                            }}
+                            variant="outline"
+                          >
+                            <Settings className="h-4 w-4 mr-2" />
+                            {t.barberDashboard?.editStore || "Edit Store"}
+                          </Button>
                         </div>
-                          <Button onClick={() => {
-                            setShowStoreSetup(true)
-                            setActiveTab("hours")  // you'll need a state for this (see below)
-                          }} variant="outline">
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div>
+                            <h3 className="font-medium">{store.title}</h3>
+                            <p className="text-sm text-muted-foreground">{store.address}</p>
+                          </div>
+                          {store.description && <p className="text-sm">{store.description}</p>}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Store Images */}
+                    <ImageUpload storeId={store.id} images={storeImages} onImagesChange={fetchStoreImages} />
+
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle>{t.barberDashboard?.services || "Services"}</CardTitle>
+                            <CardDescription>
+                              {t.barberDashboard?.managePricing || "Manage your services and pricing"}
+                            </CardDescription>
+                          </div>
+                          <Button onClick={() => setShowServiceManagement(true)}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            {t.barberDashboard?.manageServices || "Manage Services"}
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {services.map((service) => (
+                            <div key={service.id} className="flex items-center justify-between p-4 border rounded-lg">
+                              <div>
+                                <h4 className="font-medium">{service.name}</h4>
+                                <p className="text-sm text-muted-foreground">{service.description}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {service.duration_minutes} {t.booking?.minutes || "minutes"}
+                                </p>
+                              </div>
+                              <div className="text-lg font-bold">{formatCurrency(service.price, language)}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="flex items-center gap-2">
+                              <Clock className="h-5 w-5" />
+                              Working Hours
+                            </CardTitle>
+                            <CardDescription>Your business hours for customer bookings</CardDescription>
+                          </div>
+                          <Button
+                            onClick={() => {
+                              setShowStoreSetup(true)
+                              setActiveTab("hours")
+                            }}
+                            variant="outline"
+                          >
                             <Settings className="h-4 w-4 mr-2" />
                             Edit Hours
                           </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(
+                            (day, index) => {
+                              const dayHours = workingHours.find((wh) => wh.day_of_week === index)
+                              return (
+                                <div key={day} className="flex items-center justify-between p-2 border rounded">
+                                  <span className="font-medium">{day}</span>
+                                  <span className="text-sm text-muted-foreground">
+                                    {dayHours?.is_closed
+                                      ? "Closed"
+                                      : `${dayHours?.start_time || "09:00"} - ${dayHours?.end_time || "18:00"}`}
+                                  </span>
+                                </div>
+                              )
+                            },
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
 
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(
-                          (day, index) => {
-                            const dayHours = workingHours.find((wh) => wh.day_of_week === index)
-                            return (
-                              <div key={day} className="flex items-center justify-between p-2 border rounded">
-                                <span className="font-medium">{day}</span>
-                                <span className="text-sm text-muted-foreground">
-                                  {dayHours?.is_closed
-                                    ? "Closed"
-                                    : `${dayHours?.start_time || "09:00"} - ${dayHours?.end_time || "18:00"}`}
-                                </span>
-                              </div>
-                            )
-                          },
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
+                <TabsContent value="my-website">
+                  <div className="space-y-6">
+                    {/* Quick Actions Header */}
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-lg font-semibold">Your Professional Landing Page</h3>
+                            <p className="text-sm text-muted-foreground">
+                              Share your profile link with clients to showcase your work and services
+                            </p>
+                          </div>
+                          <div className="flex gap-3">
+                            <Button variant="outline" asChild>
+                              <Link href={`/profile/${store.slug || store.id}`} target="_blank">
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                View Live Page
+                              </Link>
+                            </Button>
+                            <Button onClick={handleCopyProfileLink} variant="outline">
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copy Profile Link
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
-              <TabsContent value="landing-page-editor">
-                <LandingPageEditor storeId={store.id} storeSlug={store.slug ?? store.id} initialData={landingPageData} />
-              </TabsContent>
-            </Tabs>
-          </>
-        )}
-      </div>)}
+                    {/* Landing Page Editor */}
+                    <LandingPageEditor store={store} />
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </>
+          )}
+        </div>
+      )}
+
       {isTrialExpired && (
         <div className="max-w-2xl mx-auto text-center py-12">
           <Clock className="h-16 w-16 text-red-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-red-800 mb-2">
-            {t.barberDashboard?.trialExpired || "Your trial has expired"  }
+            {t.barberDashboard?.trialExpired || "Your trial has expired"}
           </h2>
           <p className="text-red-600 mb-6">
             {t.barberDashboard?.upgradeRequired || "Please upgrade your plan to continue using BarberBook."}
-          </p>  
+          </p>
           <Button onClick={() => router.push("/upgrade")} size="lg">
             <Settings className="h-4 w-4 mr-2" />
             {t.barberDashboard?.upgradeNow || "Upgrade Now"}
@@ -732,32 +777,29 @@ export function BarberDashboard({
         </div>
       )}
 
+      {showStoreSetupWizard && !store && (
+        <StoreSetupWizard
+          open={showStoreSetupWizard}
+          onOpenChange={setShowStoreSetupWizard}
+          onSuccess={(createdStore) => {
+            setShowStoreSetupWizard(false)
+            router.refresh()
+          }}
+        />
+      )}
 
-        {showStoreSetupWizard && !store && (
-  <StoreSetupWizard
-    open={showStoreSetupWizard}
-    onOpenChange={setShowStoreSetupWizard}
-    onSuccess={(createdStore) => {
-      setShowStoreSetupWizard(false)
-      // Optional: refresh or revalidate to load created store
-      router.refresh()
-    }}
-  />
-)}
-
-        {showStoreSetup && store && (
-                      <StoreSetupDialog
-                      open={showStoreSetup}
-                      onOpenChange={setShowStoreSetup}
-                      store={store}
-                      defaultTab={activeTab} // pass the state
-
-            onSuccess={() => {
-              setShowStoreSetup(false)
-              refreshDashboardData()
-            }}
-          />
-        )}
+      {showStoreSetup && store && (
+        <StoreSetupDialog
+          open={showStoreSetup}
+          onOpenChange={setShowStoreSetup}
+          store={store}
+          defaultTab={activeTab}
+          onSuccess={() => {
+            setShowStoreSetup(false)
+            refreshDashboardData()
+          }}
+        />
+      )}
 
       {store && (
         <>
@@ -767,8 +809,7 @@ export function BarberDashboard({
             storeId={store.id}
             services={services}
             onSuccess={() => {
-                        fetchServices() // instantly updates the UI
-
+              fetchServices()
               router.refresh()
               refreshDashboardData()
             }}
