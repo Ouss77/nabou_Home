@@ -149,18 +149,7 @@ export default function HomePage() {
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
               <div className="flex items-center gap-6">
-                <button
-                  onClick={() => scrollToSection("features")}
-                  className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200"
-                >
-                  Services
-                </button>
-                <button
-                  onClick={() => scrollToSection("about")}
-                  className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200"
-                >
-                  About
-                </button>
+
                 <button
                   onClick={() => scrollToSection("stores")}
                   className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200"
@@ -179,12 +168,6 @@ export default function HomePage() {
                 >
                   Shop
                 </Link>
-                <button
-                  onClick={() => scrollToSection("contact")}
-                  className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200"
-                >
-                  Contact
-                </button>
               </div>
 
               <div className="flex items-center gap-4">
