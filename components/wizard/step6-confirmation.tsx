@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -15,8 +16,15 @@ export function Step6Confirmation({ store, onComplete }: Step6ConfirmationProps)
   const profileUrl = `/profile/${store.slug}`
   const dashboardUrl = "/barber"
 
+  const topRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    // Scroll to the top of the component when mounted
+    topRef.current?.scrollIntoView({ behavior: "auto" })
+  }, [])
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={topRef}>
       <div className="text-center">
         <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
         <h2 className="text-2xl font-bold mb-2">🎉 Congratulations!</h2>
