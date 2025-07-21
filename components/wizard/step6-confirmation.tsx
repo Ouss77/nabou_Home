@@ -3,117 +3,109 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Calendar, Clock, Camera } from "lucide-react"
-import type { StoreType } from "@/lib/db"
+import { CheckCircle, ExternalLink, Calendar, Settings, ImageIcon } from "lucide-react"
+import type { Store } from "@/lib/db"
 
 interface Step6ConfirmationProps {
-  store: StoreType
+  store: Store
   onComplete: () => void
 }
 
 export function Step6Confirmation({ store, onComplete }: Step6ConfirmationProps) {
+  const profileUrl = `/profile/${store.slug}`
+  const dashboardUrl = "/barber"
+
   return (
     <div className="space-y-6">
       <div className="text-center">
         <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold mb-2 text-green-700">Congratulations!</h2>
+        <h2 className="text-2xl font-bold mb-2">🎉 Congratulations!</h2>
         <p className="text-muted-foreground text-lg">
-          Your store has been successfully set up and is ready to accept appointments.
+          Your store has been successfully set up and is ready to accept bookings.
         </p>
       </div>
 
+      {/* Store Summary */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Your Store Details
-          </CardTitle>
-          <CardDescription>Here's a summary of what you've created.</CardDescription>
+          <CardTitle>{store.title}</CardTitle>
+          <CardDescription>{store.address}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">{store.description}</p>
+          <div className="mt-4">
+            <Badge variant="secondary" className="bg-green-100 text-green-800">
+              ✅ Store Active
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Next Steps */}
+      <Card>
+        <CardHeader>
+          <CardTitle>What's Next?</CardTitle>
+          <CardDescription>Here are some things you can do to get started:</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <h3 className="font-medium text-lg">{store.title}</h3>
-            <p className="text-muted-foreground">{store.address}</p>
-            {store.description && <p className="text-sm text-muted-foreground mt-2">{store.description}</p>}
+          <div className="flex items-start gap-3">
+            <Calendar className="h-5 w-5 text-primary mt-0.5" />
+            <div>
+              <h4 className="font-medium">Start Accepting Bookings</h4>
+              <p className="text-sm text-muted-foreground">
+                Your booking page is live and customers can start scheduling appointments.
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary">Store ID: {store.id}</Badge>
-            <Badge variant="outline">Slug: {store.slug}</Badge>
+          <div className="flex items-start gap-3">
+            <Settings className="h-5 w-5 text-primary mt-0.5" />
+            <div>
+              <h4 className="font-medium">Customize Your Settings</h4>
+              <p className="text-sm text-muted-foreground">
+                Fine-tune your services, working hours, and booking preferences.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <ImageIcon className="h-5 w-5 text-primary mt-0.5" />
+            <div>
+              <h4 className="font-medium">Add More Photos</h4>
+              <p className="text-sm text-muted-foreground">
+                Upload more images to showcase your work and attract customers.
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Calendar className="h-8 w-8 text-primary mx-auto mb-2" />
-            <h3 className="font-medium mb-1">Services Added</h3>
-            <p className="text-sm text-muted-foreground">Your services are ready for booking</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Clock className="h-8 w-8 text-primary mx-auto mb-2" />
-            <h3 className="font-medium mb-1">Hours Configured</h3>
-            <p className="text-sm text-muted-foreground">Working hours have been set</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Camera className="h-8 w-8 text-primary mx-auto mb-2" />
-            <h3 className="font-medium mb-1">Images Uploaded</h3>
-            <p className="text-sm text-muted-foreground">Your store looks great!</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="border-green-200 bg-green-50">
+      {/* Quick Links */}
+      <Card>
         <CardHeader>
-          <CardTitle className="text-green-700">What's Next?</CardTitle>
+          <CardTitle>Quick Links</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-start gap-3">
-            <div className="h-6 w-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
-              1
-            </div>
-            <div>
-              <h4 className="font-medium">Start Managing Appointments</h4>
-              <p className="text-sm text-muted-foreground">View and manage customer bookings from your dashboard</p>
-            </div>
-          </div>
+          <Button variant="outline" className="w-full justify-between bg-transparent" asChild>
+            <a href={profileUrl} target="_blank" rel="noopener noreferrer">
+              View Your Public Profile
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </Button>
 
-          <div className="flex items-start gap-3">
-            <div className="h-6 w-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
-              2
-            </div>
-            <div>
-              <h4 className="font-medium">Share Your Booking Link</h4>
-              <p className="text-sm text-muted-foreground">
-                Customers can book directly at: <code className="bg-white px-1 rounded">/book/{store.slug}</code>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <div className="h-6 w-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
-              3
-            </div>
-            <div>
-              <h4 className="font-medium">Customize Your Profile</h4>
-              <p className="text-sm text-muted-foreground">
-                Add more services, update hours, or upload additional images anytime
-              </p>
-            </div>
-          </div>
+          <Button variant="outline" className="w-full justify-between bg-transparent" asChild>
+            <a href={dashboardUrl}>
+              Go to Dashboard
+              <Settings className="h-4 w-4" />
+            </a>
+          </Button>
         </CardContent>
       </Card>
 
+      {/* Complete Button */}
       <div className="text-center pt-4">
         <Button onClick={onComplete} size="lg" className="px-8">
-          Go to Dashboard
+          Complete Setup & Go to Dashboard
         </Button>
       </div>
     </div>
