@@ -42,7 +42,7 @@ const DEFAULT_HOURS: WorkingHours[] = [
   { day_of_week: 6, start_time: "09:00", end_time: "17:00", is_closed: false }, // Saturday
 ]
 
-export function Step3WorkingHours({ storeId, onNext, onBack }: Step3WorkingHoursProps) {
+export function Step4WorkingHours({ storeId, onNext, onBack }: Step3WorkingHoursProps) {
   const [workingHours, setWorkingHours] = useState<WorkingHours[]>(DEFAULT_HOURS)
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
