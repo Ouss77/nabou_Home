@@ -20,6 +20,11 @@ interface Product {
   created_at: string
 }
 
+interface CartItem {
+  product: Product
+  quantity: number
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
@@ -31,11 +36,31 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchProducts()
+    loadCartFromStorage()
   }, [])
 
   useEffect(() => {
     filterProducts()
   }, [products, searchTerm, selectedCategory])
+
+  useEffect(() => {
+    saveCartToStorage()
+  }, [cart])
+
+  const loadCartFromStorage = () => {
+    if (typeof window !== "undefined") {
+      const savedCart = localStorage.getItem("barberbook-cart")
+      if (savedCart) {
+        setCart(JSON.parse(savedCart))
+      }
+    }
+  }
+
+  const saveCartToStorage = () => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("barberbook-cart", JSON.stringify(cart))
+    }
+  }
 
   const fetchProducts = async () => {
     try {
@@ -138,15 +163,17 @@ export default function ProductsPage() {
               <Link href="/stores">
                 <Button variant="outline">Find Barbers</Button>
               </Link>
-              <Button variant="outline" className="relative bg-transparent">
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Cart
-                {getTotalItems() > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                    {getTotalItems()}
-                  </Badge>
-                )}
-              </Button>
+              <Link href="/cart">
+                <Button variant="outline" className="relative bg-transparent">
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Cart
+                  {getTotalItems() > 0 && (
+                    <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                      {getTotalItems()}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
               <Link href="/login">
                 <Button variant="outline">Login</Button>
               </Link>
