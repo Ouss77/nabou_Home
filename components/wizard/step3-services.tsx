@@ -1,14 +1,24 @@
 "use client"
 
+import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Trash2, Sparkles } from "lucide-react"
+import { Textarea } from "../ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Plus, Trash2, ArrowLeft, Sparkles, Check } from "lucide-react"
+import { Plus, Clock, DollarSign } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+
+interface Service {
+  id: string
+  name: string
+  description: string
+  price: number
+  duration_minutes: number
+}
 
 interface Step3ServicesProps {
   storeId: string
@@ -17,809 +27,494 @@ interface Step3ServicesProps {
   onBack: () => void
 }
 
-interface Service {
-  id?: string
-  name: string
-  description: string
-  price: number
-  duration_minutes: number
-  isRecommended?: boolean
-}
-
 // Activity-specific service recommendations
-const SERVICE_RECOMMENDATIONS: Record<string, Service[]> = {
+const ACTIVITY_SERVICES = {
   barber: [
     {
       name: "Classic Haircut",
-      description: "Traditional men's haircut with styling",
+      description: "Traditional men's haircut with scissors and clippers",
       price: 25,
       duration_minutes: 30,
-      isRecommended: true,
     },
-    {
-      name: "Beard Trim",
-      description: "Professional beard shaping and trimming",
-      price: 15,
-      duration_minutes: 20,
-      isRecommended: true,
-    },
+    { name: "Beard Trim", description: "Professional beard trimming and shaping", price: 15, duration_minutes: 20 },
     {
       name: "Hot Towel Shave",
       description: "Traditional straight razor shave with hot towel",
       price: 30,
       duration_minutes: 45,
-      isRecommended: true,
     },
-    {
-      name: "Fade Cut",
-      description: "Modern fade haircut with precision styling",
-      price: 28,
-      duration_minutes: 35,
-      isRecommended: true,
-    },
-    {
-      name: "Mustache Trim",
-      description: "Precise mustache grooming and styling",
-      price: 8,
-      duration_minutes: 10,
-      isRecommended: true,
-    },
-    {
-      name: "Hair Wash & Style",
-      description: "Professional hair washing and styling",
-      price: 12,
-      duration_minutes: 15,
-      isRecommended: true,
-    },
+    { name: "Fade Cut", description: "Modern fade haircut with precise blending", price: 28, duration_minutes: 35 },
+    { name: "Mustache Trim", description: "Precision mustache grooming and styling", price: 8, duration_minutes: 10 },
+    { name: "Hair Wash & Style", description: "Shampoo, conditioning, and styling", price: 12, duration_minutes: 15 },
   ],
-  "hair-stylist": [
-    {
-      name: "Women's Cut & Style",
-      description: "Professional haircut with blow-dry and styling",
-      price: 45,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
-    {
-      name: "Hair Color",
-      description: "Full hair coloring service with professional products",
-      price: 80,
-      duration_minutes: 120,
-      isRecommended: true,
-    },
-    {
-      name: "Highlights",
-      description: "Partial or full highlights with toning",
-      price: 90,
-      duration_minutes: 150,
-      isRecommended: true,
-    },
-    {
-      name: "Blowout",
-      description: "Professional blow-dry and styling",
-      price: 25,
-      duration_minutes: 30,
-      isRecommended: true,
-    },
-    {
-      name: "Hair Treatment",
-      description: "Deep conditioning and repair treatment",
-      price: 35,
-      duration_minutes: 45,
-      isRecommended: true,
-    },
-    {
-      name: "Updo Styling",
-      description: "Special occasion updo and formal styling",
-      price: 50,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
+  hairstylist: [
+    { name: "Women's Cut & Style", description: "Haircut with blow-dry and styling", price: 45, duration_minutes: 60 },
+    { name: "Hair Color", description: "Full hair coloring service", price: 80, duration_minutes: 120 },
+    { name: "Highlights", description: "Partial or full highlights", price: 90, duration_minutes: 150 },
+    { name: "Blowout", description: "Professional blow-dry and styling", price: 25, duration_minutes: 30 },
+    { name: "Hair Treatment", description: "Deep conditioning and repair treatment", price: 35, duration_minutes: 45 },
+    { name: "Updo Styling", description: "Special occasion updo hairstyling", price: 50, duration_minutes: 60 },
   ],
-  "nail-artist": [
+  nail_artist: [
     {
       name: "Classic Manicure",
-      description: "Traditional manicure with polish",
+      description: "Traditional manicure with regular polish",
       price: 20,
       duration_minutes: 45,
-      isRecommended: true,
     },
-    {
-      name: "Gel Manicure",
-      description: "Long-lasting gel polish manicure",
-      price: 30,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
-    {
-      name: "Classic Pedicure",
-      description: "Relaxing pedicure with foot care",
-      price: 25,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
-    {
-      name: "Gel Pedicure",
-      description: "Gel polish pedicure with extended wear",
-      price: 35,
-      duration_minutes: 75,
-      isRecommended: true,
-    },
-    {
-      name: "Nail Art",
-      description: "Custom nail art and decorative designs",
-      price: 15,
-      duration_minutes: 30,
-      isRecommended: true,
-    },
-    {
-      name: "Nail Extensions",
-      description: "Acrylic or gel nail extensions",
-      price: 40,
-      duration_minutes: 90,
-      isRecommended: true,
-    },
+    { name: "Gel Manicure", description: "Long-lasting gel polish manicure", price: 30, duration_minutes: 60 },
+    { name: "Classic Pedicure", description: "Foot care and regular polish pedicure", price: 25, duration_minutes: 60 },
+    { name: "Gel Pedicure", description: "Pedicure with gel polish finish", price: 35, duration_minutes: 75 },
+    { name: "Nail Art", description: "Custom nail art and designs", price: 15, duration_minutes: 30 },
+    { name: "Nail Extensions", description: "Acrylic or gel nail extensions", price: 40, duration_minutes: 90 },
   ],
   esthetician: [
-    {
-      name: "Classic Facial",
-      description: "Deep cleansing facial with extractions",
-      price: 60,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
-    {
-      name: "Anti-Aging Facial",
-      description: "Advanced anti-aging treatment with serums",
-      price: 80,
-      duration_minutes: 75,
-      isRecommended: true,
-    },
-    {
-      name: "Acne Treatment",
-      description: "Specialized acne-fighting facial treatment",
-      price: 70,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
-    {
-      name: "Chemical Peel",
-      description: "Professional chemical exfoliation treatment",
-      price: 90,
-      duration_minutes: 45,
-      isRecommended: true,
-    },
-    {
-      name: "Microdermabrasion",
-      description: "Diamond-tip skin resurfacing treatment",
-      price: 75,
-      duration_minutes: 50,
-      isRecommended: true,
-    },
-    {
-      name: "Hydrating Facial",
-      description: "Intensive moisture and hydration treatment",
-      price: 65,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
+    { name: "Classic Facial", description: "Deep cleansing and moisturizing facial", price: 60, duration_minutes: 60 },
+    { name: "Anti-Aging Facial", description: "Advanced anti-aging treatment", price: 80, duration_minutes: 75 },
+    { name: "Acne Treatment", description: "Specialized acne and blemish treatment", price: 70, duration_minutes: 60 },
+    { name: "Chemical Peel", description: "Professional chemical exfoliation", price: 90, duration_minutes: 45 },
+    { name: "Microdermabrasion", description: "Skin resurfacing treatment", price: 75, duration_minutes: 50 },
+    { name: "Hydrating Facial", description: "Intensive moisture restoration", price: 65, duration_minutes: 60 },
   ],
-  "brow-specialist": [
-    {
-      name: "Eyebrow Threading",
-      description: "Precise eyebrow shaping with threading",
-      price: 15,
-      duration_minutes: 20,
-      isRecommended: true,
-    },
-    {
-      name: "Eyebrow Waxing",
-      description: "Professional eyebrow waxing and shaping",
-      price: 12,
-      duration_minutes: 15,
-      isRecommended: true,
-    },
-    {
-      name: "Brow Tinting",
-      description: "Eyebrow tinting for enhanced definition",
-      price: 18,
-      duration_minutes: 25,
-      isRecommended: true,
-    },
-    {
-      name: "Brow Lamination",
-      description: "Eyebrow lamination for fuller, styled brows",
-      price: 35,
-      duration_minutes: 45,
-      isRecommended: true,
-    },
-    {
-      name: "Microblading",
-      description: "Semi-permanent eyebrow tattooing",
-      price: 250,
-      duration_minutes: 120,
-      isRecommended: true,
-    },
-    {
-      name: "Brow Mapping",
-      description: "Professional brow shape consultation and mapping",
-      price: 20,
-      duration_minutes: 30,
-      isRecommended: true,
-    },
+  brow_specialist: [
+    { name: "Eyebrow Threading", description: "Precise eyebrow shaping with thread", price: 15, duration_minutes: 20 },
+    { name: "Eyebrow Waxing", description: "Quick and effective brow shaping", price: 12, duration_minutes: 15 },
+    { name: "Brow Tinting", description: "Semi-permanent eyebrow coloring", price: 20, duration_minutes: 30 },
+    { name: "Brow Lamination", description: "Eyebrow restructuring and setting", price: 35, duration_minutes: 45 },
+    { name: "Microblading", description: "Semi-permanent eyebrow tattooing", price: 250, duration_minutes: 120 },
+    { name: "Brow Mapping", description: "Professional brow shape consultation", price: 25, duration_minutes: 30 },
   ],
-  "makeup-artist": [
-    {
-      name: "Event Makeup",
-      description: "Professional makeup for special events",
-      price: 60,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
-    {
-      name: "Bridal Makeup",
-      description: "Wedding day makeup with trial session",
-      price: 120,
-      duration_minutes: 90,
-      isRecommended: true,
-    },
-    {
-      name: "Photoshoot Makeup",
-      description: "Professional makeup for photography",
-      price: 80,
-      duration_minutes: 75,
-      isRecommended: true,
-    },
-    {
-      name: "Everyday Makeup",
-      description: "Natural, everyday makeup application",
-      price: 40,
-      duration_minutes: 45,
-      isRecommended: true,
-    },
-    {
-      name: "Makeup Lesson",
-      description: "Personal makeup tutorial and training",
-      price: 70,
-      duration_minutes: 90,
-      isRecommended: true,
-    },
-    {
-      name: "Special Effects Makeup",
-      description: "Creative and theatrical makeup artistry",
-      price: 100,
-      duration_minutes: 120,
-      isRecommended: true,
-    },
+  makeup_artist: [
+    { name: "Event Makeup", description: "Professional makeup for special events", price: 60, duration_minutes: 60 },
+    { name: "Bridal Makeup", description: "Wedding day makeup application", price: 100, duration_minutes: 90 },
+    { name: "Photoshoot Makeup", description: "Camera-ready makeup for photos", price: 80, duration_minutes: 75 },
+    { name: "Makeup Lesson", description: "Personal makeup application tutorial", price: 70, duration_minutes: 90 },
+    { name: "Prom Makeup", description: "Special occasion makeup for prom", price: 50, duration_minutes: 60 },
+    { name: "Makeup Trial", description: "Practice session before main event", price: 40, duration_minutes: 45 },
   ],
-  "lash-technician": [
+  lash_technician: [
     {
       name: "Classic Lash Extensions",
-      description: "Individual lash extensions for natural look",
+      description: "Natural-looking individual lash extensions",
       price: 80,
       duration_minutes: 120,
-      isRecommended: true,
     },
     {
       name: "Volume Lash Extensions",
-      description: "Multiple lashes per natural lash for volume",
+      description: "Fuller, dramatic lash extensions",
       price: 100,
       duration_minutes: 150,
-      isRecommended: true,
     },
-    {
-      name: "Lash Lift",
-      description: "Natural lash lifting and curling treatment",
-      price: 45,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
-    {
-      name: "Lash Tint",
-      description: "Eyelash tinting for enhanced definition",
-      price: 20,
-      duration_minutes: 30,
-      isRecommended: true,
-    },
-    {
-      name: "Lash Fill",
-      description: "Maintenance fill for existing extensions",
-      price: 50,
-      duration_minutes: 90,
-      isRecommended: true,
-    },
-    {
-      name: "Lash Removal",
-      description: "Safe removal of lash extensions",
-      price: 25,
-      duration_minutes: 45,
-      isRecommended: true,
-    },
+    { name: "Lash Fill", description: "Maintenance for existing extensions", price: 45, duration_minutes: 60 },
+    { name: "Lash Lift", description: "Natural lash curling and lifting", price: 50, duration_minutes: 60 },
+    { name: "Lash Tinting", description: "Semi-permanent lash coloring", price: 25, duration_minutes: 30 },
+    { name: "Lash Removal", description: "Safe removal of lash extensions", price: 20, duration_minutes: 30 },
   ],
-  "massage-therapist": [
-    {
-      name: "Swedish Massage",
-      description: "Relaxing full-body Swedish massage",
-      price: 70,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
-    {
-      name: "Deep Tissue Massage",
-      description: "Therapeutic deep tissue muscle work",
-      price: 80,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
-    {
-      name: "Hot Stone Massage",
-      description: "Relaxing massage with heated stones",
-      price: 90,
-      duration_minutes: 75,
-      isRecommended: true,
-    },
-    {
-      name: "Sports Massage",
-      description: "Targeted massage for athletes and active individuals",
-      price: 75,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
+  massage_therapist: [
+    { name: "Swedish Massage", description: "Relaxing full-body massage", price: 70, duration_minutes: 60 },
+    { name: "Deep Tissue Massage", description: "Therapeutic muscle tension relief", price: 80, duration_minutes: 60 },
+    { name: "Hot Stone Massage", description: "Massage with heated stones", price: 90, duration_minutes: 75 },
+    { name: "Sports Massage", description: "Athletic recovery and injury prevention", price: 75, duration_minutes: 60 },
     {
       name: "Prenatal Massage",
       description: "Specialized massage for expecting mothers",
       price: 85,
       duration_minutes: 60,
-      isRecommended: true,
     },
-    {
-      name: "Chair Massage",
-      description: "Quick relaxation massage in seated position",
-      price: 40,
-      duration_minutes: 30,
-      isRecommended: true,
-    },
+    { name: "Chair Massage", description: "Quick tension relief massage", price: 40, duration_minutes: 30 },
   ],
-  "tattoo-artist": [
-    {
-      name: "Small Tattoo",
-      description: "Simple tattoo design under 3 inches",
-      price: 80,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
-    {
-      name: "Medium Tattoo",
-      description: "Detailed tattoo design 3-6 inches",
-      price: 150,
-      duration_minutes: 120,
-      isRecommended: true,
-    },
-    {
-      name: "Large Tattoo Session",
-      description: "Extended session for large tattoo work",
-      price: 200,
-      duration_minutes: 180,
-      isRecommended: true,
-    },
-    {
-      name: "Tattoo Consultation",
-      description: "Design consultation and planning session",
-      price: 50,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
-    {
-      name: "Cover-up Tattoo",
-      description: "Covering existing tattoo with new design",
-      price: 180,
-      duration_minutes: 150,
-      isRecommended: true,
-    },
-    {
-      name: "Touch-up Session",
-      description: "Healing touch-up for existing tattoo",
-      price: 60,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
+  tattoo_artist: [
+    { name: "Small Tattoo", description: "Simple design under 2 inches", price: 80, duration_minutes: 60 },
+    { name: "Medium Tattoo", description: "Design 2-4 inches", price: 150, duration_minutes: 120 },
+    { name: "Large Tattoo", description: "Complex design over 4 inches", price: 250, duration_minutes: 180 },
+    { name: "Tattoo Touch-up", description: "Color refresh and line work", price: 60, duration_minutes: 45 },
+    { name: "Cover-up Tattoo", description: "Covering existing tattoo", price: 200, duration_minutes: 150 },
+    { name: "Consultation", description: "Design consultation and planning", price: 30, duration_minutes: 30 },
   ],
-  "permanent-makeup": [
+  permanent_makeup: [
     {
-      name: "Microblading",
+      name: "Eyebrow Microblading",
       description: "Semi-permanent eyebrow hair strokes",
       price: 300,
       duration_minutes: 150,
-      isRecommended: true,
     },
-    {
-      name: "Powder Brows",
-      description: "Soft powder eyebrow technique",
-      price: 280,
-      duration_minutes: 120,
-      isRecommended: true,
-    },
-    {
-      name: "Lip Blush",
-      description: "Semi-permanent lip color enhancement",
-      price: 350,
-      duration_minutes: 120,
-      isRecommended: true,
-    },
-    {
-      name: "Eyeliner Tattoo",
-      description: "Permanent eyeliner application",
-      price: 250,
-      duration_minutes: 90,
-      isRecommended: true,
-    },
-    {
-      name: "Touch-up Session",
-      description: "Maintenance touch-up for existing work",
-      price: 100,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
-    {
-      name: "Color Correction",
-      description: "Correcting previous permanent makeup",
-      price: 200,
-      duration_minutes: 120,
-      isRecommended: true,
-    },
+    { name: "Lip Blush", description: "Semi-permanent lip color enhancement", price: 250, duration_minutes: 120 },
+    { name: "Eyeliner Tattoo", description: "Permanent eyeliner application", price: 200, duration_minutes: 90 },
+    { name: "Touch-up Session", description: "Color refresh for existing work", price: 100, duration_minutes: 60 },
+    { name: "Color Correction", description: "Fixing previous permanent makeup", price: 150, duration_minutes: 90 },
+    { name: "Consultation", description: "Design and color consultation", price: 50, duration_minutes: 45 },
   ],
-  "wellness-coach": [
+  wellness_coach: [
     {
       name: "Initial Consultation",
       description: "Comprehensive health and wellness assessment",
       price: 80,
       duration_minutes: 90,
-      isRecommended: true,
     },
+    { name: "Follow-up Session", description: "Progress review and plan adjustment", price: 60, duration_minutes: 60 },
     {
-      name: "Nutrition Coaching",
-      description: "Personalized nutrition guidance session",
-      price: 60,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
-    {
-      name: "Fitness Planning",
-      description: "Custom fitness plan development",
+      name: "Nutrition Planning",
+      description: "Personalized meal and nutrition guidance",
       price: 70,
       duration_minutes: 75,
-      isRecommended: true,
     },
     {
-      name: "Lifestyle Coaching",
-      description: "Holistic lifestyle improvement session",
+      name: "Fitness Consultation",
+      description: "Exercise plan and fitness guidance",
       price: 65,
       duration_minutes: 60,
-      isRecommended: true,
     },
-    {
-      name: "Stress Management",
-      description: "Stress reduction and management techniques",
-      price: 55,
-      duration_minutes: 45,
-      isRecommended: true,
-    },
-    {
-      name: "Follow-up Session",
-      description: "Progress review and plan adjustment",
-      price: 50,
-      duration_minutes: 45,
-      isRecommended: true,
-    },
+    { name: "Stress Management", description: "Techniques for stress reduction", price: 55, duration_minutes: 45 },
+    { name: "Group Workshop", description: "Wellness workshop for multiple clients", price: 40, duration_minutes: 90 },
   ],
   other: [
-    {
-      name: "Consultation",
-      description: "Initial consultation and service planning",
-      price: 30,
-      duration_minutes: 30,
-      isRecommended: true,
-    },
-    {
-      name: "Basic Service",
-      description: "Standard service offering",
-      price: 50,
-      duration_minutes: 60,
-      isRecommended: true,
-    },
-    {
-      name: "Premium Service",
-      description: "Enhanced service with additional benefits",
-      price: 80,
-      duration_minutes: 90,
-      isRecommended: true,
-    },
-    {
-      name: "Package Deal",
-      description: "Multiple services bundled together",
-      price: 120,
-      duration_minutes: 120,
-      isRecommended: true,
-    },
+    { name: "Consultation", description: "Initial service consultation", price: 30, duration_minutes: 30 },
+    { name: "Basic Service", description: "Standard service offering", price: 50, duration_minutes: 60 },
+    { name: "Premium Service", description: "Enhanced service with extras", price: 80, duration_minutes: 90 },
+    { name: "Express Service", description: "Quick service option", price: 25, duration_minutes: 30 },
+    { name: "Package Deal", description: "Multiple services combined", price: 120, duration_minutes: 120 },
+    { name: "Follow-up", description: "Maintenance or touch-up service", price: 40, duration_minutes: 45 },
   ],
 }
 
-const ACTIVITY_NAMES: Record<string, string> = {
-  barber: "Barber",
-  "hair-stylist": "Hair Stylist",
-  "nail-artist": "Nail Artist",
-  esthetician: "Esthetician",
-  "brow-specialist": "Brow Specialist",
-  "makeup-artist": "Makeup Artist",
-  "lash-technician": "Lash Technician",
-  "massage-therapist": "Massage Therapist",
-  "tattoo-artist": "Tattoo Artist",
-  "permanent-makeup": "Permanent Makeup Artist",
-  "wellness-coach": "Wellness Coach",
-  other: "Other",
+// Get activity display name
+const getActivityDisplayName = (activityId: string): string => {
+  const activityNames: Record<string, string> = {
+    barber: "Barber",
+    hairstylist: "Hair Stylist",
+    nail_artist: "Nail Artist",
+    esthetician: "Esthetician",
+    brow_specialist: "Brow Specialist",
+    makeup_artist: "Makeup Artist",
+    lash_technician: "Lash Technician",
+    massage_therapist: "Massage Therapist",
+    tattoo_artist: "Tattoo Artist",
+    permanent_makeup: "Permanent Makeup Artist",
+    wellness_coach: "Wellness Coach",
+    other: "Other Services",
+  }
+  return activityNames[activityId] || "Services"
 }
 
 export function Step3Services({ storeId, selectedActivity, onNext, onBack }: Step3ServicesProps) {
   const [services, setServices] = useState<Service[]>([])
+  const [isLoading, setIsLoading] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [newService, setNewService] = useState({
+    name: "",
+    description: "",
+    price: "",
+    duration_minutes: "",
+  })
+  const { toast } = useToast()
 
-  // Form fields for adding custom services
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [price, setPrice] = useState("")
-  const [duration, setDuration] = useState("")
+  // Get suggested services for the selected activity
+  const suggestedServices =
+    ACTIVITY_SERVICES[selectedActivity as keyof typeof ACTIVITY_SERVICES] || ACTIVITY_SERVICES.other
+  const activityDisplayName = getActivityDisplayName(selectedActivity)
 
-  // Load recommended services based on selected activity
+  // Fetch existing services
   useEffect(() => {
-    const recommendedServices = SERVICE_RECOMMENDATIONS[selectedActivity] || SERVICE_RECOMMENDATIONS["other"]
-    setServices([...recommendedServices])
-  }, [selectedActivity])
+    fetchServices()
+  }, [storeId])
 
-  const handleAddRecommendedService = (service: Service) => {
-    if (!services.find((s) => s.name === service.name)) {
-      setServices((prev) => [...prev, { ...service }])
-    }
-  }
-
-  const handleRemoveService = (index: number) => {
-    setServices((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const handleAddCustomService = () => {
-    if (name && price && duration) {
-      const newService: Service = {
-        name,
-        description,
-        price: Number.parseFloat(price),
-        duration_minutes: Number.parseInt(duration),
-        isRecommended: false,
+  const fetchServices = async () => {
+    try {
+      const response = await fetch(`/api/barber/services?storeId=${storeId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setServices(data.services || [])
       }
-      setServices((prev) => [...prev, newService])
-
-      // Reset form
-      setName("")
-      setDescription("")
-      setPrice("")
-      setDuration("")
-      setShowAddForm(false)
+    } catch (error) {
+      console.error("Failed to fetch services:", error)
     }
   }
 
-  const handleContinue = async () => {
-    if (services.length === 0) {
-      setError("Please add at least one service to continue")
+  const handleAddSuggestedService = async (suggestedService: (typeof suggestedServices)[0]) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch("/api/barber/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeId,
+          ...suggestedService,
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setServices((prev) => [...prev, result.service])
+        toast({
+          title: "Service Added",
+          description: `${suggestedService.name} has been added to your services.`,
+        })
+      }
+    } catch (error) {
+      console.error("Failed to add service:", error)
+      toast({
+        title: "Error",
+        description: "Failed to add service. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleAddCustomService = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!newService.name || !newService.price || !newService.duration_minutes) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      })
       return
     }
 
-    setLoading(true)
-    setError("")
-
+    setIsLoading(true)
     try {
-      // Save all services
-      for (const service of services) {
-        const response = await fetch("/api/barber/services", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            storeId,
-            name: service.name,
-            description: service.description,
-            price: service.price,
-            duration_minutes: service.duration_minutes,
-          }),
+      const response = await fetch("/api/barber/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeId,
+          name: newService.name,
+          description: newService.description,
+          price: Number.parseFloat(newService.price),
+          duration_minutes: Number.parseInt(newService.duration_minutes),
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setServices((prev) => [...prev, result.service])
+        setNewService({ name: "", description: "", price: "", duration_minutes: "" })
+        setShowAddForm(false)
+        toast({
+          title: "Service Added",
+          description: `${newService.name} has been added to your services.`,
         })
-
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || "Failed to save service")
-        }
       }
-
-      onNext()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save services")
+    } catch (error) {
+      console.error("Failed to add service:", error)
+      toast({
+        title: "Error",
+        description: "Failed to add service. Please try again.",
+        variant: "destructive",
+      })
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
-  const activityName = ACTIVITY_NAMES[selectedActivity] || "Your Activity"
-  const recommendedServices = SERVICE_RECOMMENDATIONS[selectedActivity] || []
+  const handleDeleteService = async (serviceId: string) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/barber/services/${serviceId}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        setServices((prev) => prev.filter((service) => service.id !== serviceId))
+        toast({
+          title: "Service Removed",
+          description: "Service has been removed from your store.",
+        })
+      }
+    } catch (error) {
+      console.error("Failed to delete service:", error)
+      toast({
+        title: "Error",
+        description: "Failed to remove service. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const availableSuggestions = suggestedServices.filter(
+    (suggested) => !services.some((service) => service.name.toLowerCase() === suggested.name.toLowerCase()),
+  )
 
   return (
     <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <Badge variant="secondary" className="flex items-center gap-1">
-            <Sparkles className="h-3 w-3" />
-            Recommended for {activityName}
+      <div className="text-center">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <Sparkles className="h-6 w-6 text-primary" />
+          <Badge variant="secondary" className="text-sm">
+            Recommended for {activityDisplayName}
           </Badge>
         </div>
-        <h2 className="text-2xl font-bold">Set Up Your Services</h2>
+        <h2 className="text-xl font-semibold mb-2">Add Your Services</h2>
         <p className="text-muted-foreground">
-          We've curated some popular services for {activityName.toLowerCase()}s. Select the ones you offer or add your
-          own.
+          We've curated popular services for {activityDisplayName.toLowerCase()}s. Add the ones you offer or create
+          custom services.
         </p>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+      {/* Suggested Services */}
+      {availableSuggestions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Recommended {activityDisplayName} Services
+            </CardTitle>
+            <CardDescription>
+              Popular services for {activityDisplayName.toLowerCase()}s. Click to quickly add them to your offerings.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {availableSuggestions.map((service, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => handleAddSuggestedService(service)}
+                >
+                  <div className="flex-1">
+                    <h4 className="font-medium">{service.name}</h4>
+                    <p className="text-sm text-muted-foreground">{service.description}</p>
+                    <div className="flex items-center gap-4 mt-1">
+                      <Badge variant="secondary" className="text-xs">
+                        <DollarSign className="h-3 w-3 mr-1" />€{service.price}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {service.duration_minutes}min
+                      </Badge>
+                    </div>
+                  </div>
+                  <Plus className="h-5 w-5 text-primary" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Recommended Services */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Recommended Services</h3>
-        <div className="grid gap-3">
-          {recommendedServices.map((service, index) => {
-            const isAdded = services.find((s) => s.name === service.name)
-            return (
-              <Card key={index} className={`transition-all ${isAdded ? "bg-green-50 border-green-200" : ""}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-medium">{service.name}</h4>
-                        {isAdded && <Check className="h-4 w-4 text-green-600" />}
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">{service.description}</p>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="font-medium">€{service.price}</span>
-                        <span className="text-muted-foreground">{service.duration_minutes} min</span>
-                      </div>
-                    </div>
-                    <Button
-                      variant={isAdded ? "secondary" : "outline"}
-                      size="sm"
-                      onClick={() => handleAddRecommendedService(service)}
-                      disabled={!!isAdded}
-                    >
-                      {isAdded ? "Added" : "Add"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Selected Services */}
+      {/* Current Services */}
       {services.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Your Services ({services.length})</h3>
-          <div className="grid gap-3">
-            {services.map((service, index) => (
-              <Card key={index}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-medium">{service.name}</h4>
-                        {service.isRecommended && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Sparkles className="h-3 w-3 mr-1" />
-                            Recommended
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">{service.description}</p>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="font-medium">€{service.price}</span>
-                        <span className="text-muted-foreground">{service.duration_minutes} min</span>
-                      </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Services ({services.length})</CardTitle>
+            <CardDescription>Services that customers can book at your business.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {services.map((service) => (
+                <div key={service.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex-1">
+                    <h4 className="font-medium">{service.name}</h4>
+                    <p className="text-sm text-muted-foreground">{service.description}</p>
+                    <div className="flex items-center gap-4 mt-1">
+                      <Badge variant="secondary" className="text-xs">
+                        <DollarSign className="h-3 w-3 mr-1" />€{service.price}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {service.duration_minutes}min
+                      </Badge>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => handleRemoveService(index)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteService(service.id)}
+                    disabled={isLoading}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Add Custom Service */}
-      <div className="space-y-4">
-        {!showAddForm ? (
-          <Button variant="outline" onClick={() => setShowAddForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Custom Service
-          </Button>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>Add Custom Service</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Add Custom Service</CardTitle>
+          <CardDescription>Create a custom service with your own pricing and duration.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!showAddForm ? (
+            <Button onClick={() => setShowAddForm(true)} variant="outline" className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Custom Service
+            </Button>
+          ) : (
+            <form onSubmit={handleAddCustomService} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Service Name</Label>
+                  <Label htmlFor="name">Service Name *</Label>
                   <Input
                     id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g., Premium Haircut"
+                    placeholder="e.g., Premium Treatment"
+                    value={newService.name}
+                    onChange={(e) => setNewService((prev) => ({ ...prev, name: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="price">Price (€)</Label>
+                  <Label htmlFor="price">Price (€) *</Label>
                   <Input
                     id="price"
                     type="number"
                     step="0.01"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    placeholder="25.00"
+                    placeholder="50.00"
+                    value={newService.price}
+                    onChange={(e) => setNewService((prev) => ({ ...prev, price: e.target.value }))}
                   />
                 </div>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="duration">Duration (minutes)</Label>
+                <Label htmlFor="duration">Duration (minutes) *</Label>
                 <Input
                   id="duration"
                   type="number"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                  placeholder="30"
+                  placeholder="60"
+                  value={newService.duration_minutes}
+                  onChange={(e) => setNewService((prev) => ({ ...prev, duration_minutes: e.target.value }))}
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe your service..."
-                  rows={2}
+                  placeholder="Describe this service..."
+                  value={newService.description}
+                  onChange={(e) => setNewService((prev) => ({ ...prev, description: e.target.value }))}
                 />
               </div>
+
               <div className="flex gap-2">
-                <Button onClick={handleAddCustomService} disabled={!name || !price || !duration}>
+                <Button type="submit" disabled={isLoading}>
                   Add Service
                 </Button>
-                <Button variant="outline" onClick={() => setShowAddForm(false)}>
+                <Button type="button" variant="outline" onClick={() => setShowAddForm(false)}>
                   Cancel
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+            </form>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Navigation */}
-      <div className="flex justify-between pt-6">
+      <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
-        <Button onClick={handleContinue} disabled={loading || services.length === 0} className="min-w-[120px]">
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Continue
+        <Button onClick={onNext} disabled={services.length === 0}>
+          Continue to Working Hours
+          {services.length === 0 && <span className="ml-2 text-xs">(Add at least one service)</span>}
         </Button>
       </div>
     </div>

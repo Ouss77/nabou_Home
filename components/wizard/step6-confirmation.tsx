@@ -1,93 +1,119 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle, Calendar, Camera, Wrench } from "lucide-react"
-import type { StoreType } from "@/lib/db"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { CheckCircle, ExternalLink, Calendar, Settings, ImageIcon } from "lucide-react"
+import type { Store } from "@/lib/db"
 
 interface Step6ConfirmationProps {
-  store: StoreType
+  store: Store
   onComplete: () => void
 }
 
 export function Step6Confirmation({ store, onComplete }: Step6ConfirmationProps) {
+  const profileUrl = `/profile/${store.slug}`
+  const dashboardUrl = "/barber"
+
+  const topRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    // Scroll to the top of the component when mounted
+    topRef.current?.scrollIntoView({ behavior: "auto" })
+  }, [])
+
   return (
-    <div className="space-y-6">
-      <div className="text-center space-y-4">
-        <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-          <CheckCircle className="h-8 w-8 text-green-600" />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold text-green-900">Setup Complete!</h2>
-          <p className="text-muted-foreground">Congratulations! Your store is now ready to accept appointments.</p>
-        </div>
+    <div className="space-y-6" ref={topRef}>
+      <div className="text-center">
+        <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold mb-2">🎉 Congratulations!</h2>
+        <p className="text-muted-foreground text-lg">
+          Your store has been successfully set up and is ready to accept bookings.
+        </p>
       </div>
 
+      {/* Store Summary */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            {store.title}
-          </CardTitle>
+          <CardTitle>{store.title}</CardTitle>
+          <CardDescription>{store.address}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">{store.description}</p>
+          <div className="mt-4">
+            <Badge variant="secondary" className="bg-green-100 text-green-800">
+              ✅ Store Active
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Next Steps */}
+      <Card>
+        <CardHeader>
+          <CardTitle>What's Next?</CardTitle>
+          <CardDescription>Here are some things you can do to get started:</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <div>
-                <div className="font-medium">Store Information</div>
-                <div className="text-sm text-muted-foreground">Basic details configured</div>
-              </div>
+          <div className="flex items-start gap-3">
+            <Calendar className="h-5 w-5 text-primary mt-0.5" />
+            <div>
+              <h4 className="font-medium">Start Accepting Bookings</h4>
+              <p className="text-sm text-muted-foreground">
+                Your booking page is live and customers can start scheduling appointments.
+              </p>
             </div>
+          </div>
 
-            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <div>
-                <div className="font-medium">Activity Selected</div>
-                <div className="text-sm text-muted-foreground">Services customized</div>
-              </div>
+          <div className="flex items-start gap-3">
+            <Settings className="h-5 w-5 text-primary mt-0.5" />
+            <div>
+              <h4 className="font-medium">Customize Your Settings</h4>
+              <p className="text-sm text-muted-foreground">
+                Fine-tune your services, working hours, and booking preferences.
+              </p>
             </div>
+          </div>
 
-            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <div>
-                <div className="font-medium">Services Added</div>
-                <div className="text-sm text-muted-foreground">Ready for bookings</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <div>
-                <div className="font-medium">Working Hours</div>
-                <div className="text-sm text-muted-foreground">Schedule configured</div>
-              </div>
+          <div className="flex items-start gap-3">
+            <ImageIcon className="h-5 w-5 text-primary mt-0.5" />
+            <div>
+              <h4 className="font-medium">Add More Photos</h4>
+              <p className="text-sm text-muted-foreground">
+                Upload more images to showcase your work and attract customers.
+              </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="font-medium text-blue-900 mb-3">What's Next?</h3>
-        <div className="space-y-2 text-sm text-blue-800">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            <span>Start accepting appointments from customers</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Camera className="h-4 w-4" />
-            <span>Add more photos to showcase your work</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Wrench className="h-4 w-4" />
-            <span>Customize your services and pricing anytime</span>
-          </div>
-        </div>
-      </div>
+      {/* Quick Links */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Links</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Button variant="outline" className="w-full justify-between bg-transparent" asChild>
+            <a href={profileUrl} target="_blank" rel="noopener noreferrer">
+              View Your Public Profile
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </Button>
 
-      <div className="text-center pt-6">
-        <Button onClick={onComplete} size="lg" className="min-w-[200px]">
-          Go to Dashboard
+          <Button variant="outline" className="w-full justify-between bg-transparent" asChild>
+            <a href={dashboardUrl}>
+              Go to Dashboard
+              <Settings className="h-4 w-4" />
+            </a>
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Complete Button */}
+      <div className="text-center pt-4">
+        <Button onClick={onComplete} size="lg" className="px-8">
+          Complete Setup & Go to Dashboard
         </Button>
       </div>
     </div>
