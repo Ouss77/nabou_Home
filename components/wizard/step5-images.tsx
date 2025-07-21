@@ -1,27 +1,29 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ImageUpload } from "../image-upload"
-import { Camera, Upload, X } from "lucide-react"
+import { ImageIcon, Upload, X } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
-interface Step5ImagesProps {
+interface StoreImage {
+  id: string
+  image_data: string
+  image_name: string
+  is_primary: boolean
+}
+
+interface Step4ImagesProps {
   storeId: string
   onFinish: () => void
   onBack: () => void
 }
 
-interface StoreImage {
-  id: string
-  image_url: string
-  alt_text: string
-}
-
-export function Step5Images({ storeId, onFinish, onBack }: Step5ImagesProps) {
+export function Step5Images({ storeId, onFinish, onBack }: Step4ImagesProps) {
   const [images, setImages] = useState<StoreImage[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -40,41 +42,77 @@ export function Step5Images({ storeId, onFinish, onBack }: Step5ImagesProps) {
     }
   }
 
-  const handleImageUpload = async (imageUrl: string) => {
-    setIsLoading(true)
-    try {
-      const response = await fetch("/api/barber/store-images", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          storeId,
-          imageUrl,
-          altText: "Store image",
-        }),
-      })
+const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const files = event.target.files
+  if (!files || files.length === 0) return
 
-      if (response.ok) {
-        const result = await response.json()
-        setImages((prev) => [...prev, result.image])
+  setIsUploading(true)
+
+  const uploads = Array.from(files).map((file, idx) => {
+    return new Promise<void>((resolve) => {
+      if (file.size > 5 * 1024 * 1024) {
         toast({
-          title: "Image Added",
-          description: "Your image has been uploaded successfully.",
+          title: "File Too Large", 
+          description: `${file.name} is too large. Please choose files under 5MB.`,
+          variant: "destructive",
         })
+        return resolve()
       }
-    } catch (error) {
-      console.error("Failed to upload image:", error)
-      toast({
-        title: "Upload Failed",
-        description: "Failed to upload image. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        try {
+          const imageData = e.target?.result as string
+
+          // ✅ Prevent double base64 prefix issue
+          if (!imageData.startsWith("data:image")) {
+            throw new Error("Invalid base64 image data")
+          }
+
+          const base64WithoutPrefix = imageData.split(",")[1]
+
+          const response = await fetch("/api/barber/store-images", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              storeId,
+              imageData: base64WithoutPrefix,
+              imageName: file.name,
+              imageType: file.type,
+              imageSize: file.size,
+              isPrimary: images.length === 0 && idx === 0,
+            }),
+          })
+
+          if (!response.ok) {
+            throw new Error(`Upload failed for ${file.name}`)
+          }
+        } catch (err) {
+          console.error("Failed to upload image:", err)
+          toast({
+            title: "Upload Failed",
+            description: `Failed to upload ${file.name}.`,
+            variant: "destructive",
+          })
+        }
+
+        resolve()
+      }
+
+      reader.readAsDataURL(file)
+    })
+  })
+
+  await Promise.all(uploads)
+    await fetchImages() // ✅ Refresh the image list here
+
+  setIsUploading(false)
+  event.target.value = ""
+}
+
+
 
   const handleDeleteImage = async (imageId: string) => {
-    setIsLoading(true)
     try {
       const response = await fetch(`/api/barber/store-images/${imageId}`, {
         method: "DELETE",
@@ -83,93 +121,102 @@ export function Step5Images({ storeId, onFinish, onBack }: Step5ImagesProps) {
       if (response.ok) {
         setImages((prev) => prev.filter((img) => img.id !== imageId))
         toast({
-          title: "Image Removed",
-          description: "Image has been removed from your gallery.",
+          title: "Image Deleted",
+          description: "Image has been removed from your store.",
         })
       }
     } catch (error) {
       console.error("Failed to delete image:", error)
       toast({
-        title: "Error",
-        description: "Failed to remove image. Please try again.",
+        title: "Delete Failed",
+        description: "Failed to delete image. Please try again.",
         variant: "destructive",
       })
-    } finally {
-      setIsLoading(false)
     }
   }
 
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <Camera className="h-12 w-12 text-primary mx-auto mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Add Photos</h2>
+        <ImageIcon className="h-12 w-12 text-primary mx-auto mb-4" />
+        <h2 className="text-xl font-semibold mb-2">Add Store Images</h2>
         <p className="text-muted-foreground">
-          Showcase your work and space with high-quality photos. This helps customers know what to expect.
+          Upload photos of your barbershop to attract more customers. This step is optional.
         </p>
       </div>
 
-      {/* Upload Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5" />
-            Upload Images
-          </CardTitle>
+          <CardTitle>Store Gallery</CardTitle>
           <CardDescription>
-            Add photos of your work, workspace, or team. High-quality images help attract more customers.
+            Add photos of your barbershop, work examples, or team. The first image will be your main photo.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ImageUpload onImageUpload={handleImageUpload} />
-        </CardContent>
-      </Card>
+            <div className="max-h-[400px] overflow-y-auto">
 
-      {/* Current Images */}
-      {images.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Gallery ({images.length})</CardTitle>
-            <CardDescription>These images will be displayed on your store profile and booking page.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {images.map((image) => (
+          {/* Upload Area */}
+          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center mb-6">
+          <label className="relative block cursor-pointer border-2 border-dashed rounded-lg p-8 text-center hover:bg-accent transition">
+
+            <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Upload Store Images</p>
+              <p className="text-xs text-muted-foreground">Drag and drop files here, or click to browse</p>
+              <p className="text-xs text-muted-foreground">Supports: JPG, PNG, WebP (Max 5MB each)</p>
+            </div>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleFileUpload}
+              disabled={isUploading}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            </label>
+
+            {isUploading && (
+              <div className="mt-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                <p className="text-sm text-muted-foreground mt-2">Uploading...</p>
+              </div>
+            )}
+          </div>
+          {/* Image Grid */}
+          {images.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {images.map((image, index) => (
                 <div key={image.id} className="relative group">
-                  <img
-                    src={image.image_url || "/placeholder.svg"}
-                    alt={image.alt_text}
-                    className="w-full h-32 object-cover rounded-lg border"
-                  />
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                  <div className="aspect-square rounded-lg overflow-hidden bg-muted">
+                    <img
+                  src={image.image_data.startsWith("data:image") ? image.image_data : `data:image/jpeg;base64,${image.image_data}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  {image.is_primary && (
+                    <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
+                      Main Photo
+                    </div>
+                  )}
+                  <button
                     onClick={() => handleDeleteImage(image.id)}
-                    disabled={isLoading}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <X className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
 
-      {/* Tips */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Photo Tips</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>• Use good lighting and high-resolution images</li>
-            <li>• Show your best work and clean workspace</li>
-            <li>• Include before/after photos if applicable</li>
-            <li>• Add photos of your team and equipment</li>
-            <li>• Keep images professional and relevant</li>
-          </ul>
+          {images.length === 0 && !isUploading && (
+            <div className="text-center py-8 text-muted-foreground">
+              <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>No images uploaded yet</p>
+              <p className="text-sm">Add some photos to showcase your barbershop</p>
+            </div>
+          )}
+        </div>
         </CardContent>
       </Card>
 
