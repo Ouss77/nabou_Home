@@ -36,7 +36,7 @@ const SUGGESTED_SERVICES = [
   { name: "Mustache Trim", description: "Precision mustache grooming", price: 8, duration_minutes: 10 },
 ]
 
-export function Step2Services({ storeId, onNext, onBack }: Step2ServicesProps) {
+export function Step3Services({ storeId, onNext, onBack }: Step2ServicesProps) {
   const [services, setServices] = useState<Service[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
