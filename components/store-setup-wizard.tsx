@@ -128,26 +128,22 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
   }
 
   return (
-<DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
-  <DialogHeader className="px-6 pt-6">
-    <DialogTitle className="text-2xl font-bold">
-      Welcome! Let's Set Up Your Store
-    </DialogTitle>
-    <DialogDescription>
-      Follow these steps to create your profile and start accepting appointments.
-    </DialogDescription>
-  </DialogHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="px-6 pt-6">
+          <DialogTitle className="text-2xl font-bold">Welcome! Let's Set Up Your Store</DialogTitle>
+          <DialogDescription>
+            Follow these steps to create your profile and start accepting appointments.
+          </DialogDescription>
+        </DialogHeader>
 
-  <div className="px-6 py-4">
-    <Progress value={(currentStep / WIZARD_STEPS.length) * 100} className="mb-4" />
-    <StepIndicator steps={WIZARD_STEPS} currentStep={currentStep} />
-  </div>
+        <div className="px-6 py-4">
+          <Progress value={(currentStep / WIZARD_STEPS.length) * 100} className="mb-4" />
+          <StepIndicator steps={WIZARD_STEPS} currentStep={currentStep} />
+        </div>
 
-  {/* Scrollable content that prevents overflow on X axis */}
-  <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6">
-    {renderStepContent()}
-  </div>
-</DialogContent>
-
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6">{renderStepContent()}</div>
+      </DialogContent>
+    </Dialog>
   )
 }

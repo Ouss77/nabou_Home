@@ -1,13 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Clock } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Loader2, Clock, ArrowLeft } from "lucide-react"
+
+interface Step4WorkingHoursProps {
+  storeId: string
+  onNext: () => void
+  onBack: () => void
+}
 
 interface WorkingHours {
   day_of_week: number
@@ -16,24 +21,18 @@ interface WorkingHours {
   is_closed: boolean
 }
 
-interface Step4WorkingHoursProps {
-  storeId: string
-  onNext: () => void
-  onBack: () => void
-}
- 
-const DAYS = [
-  { name: "Sunday", value: 0 },
-  { name: "Monday", value: 1 },
-  { name: "Tuesday", value: 2 },
-  { name: "Wednesday", value: 3 },
-  { name: "Thursday", value: 4 },
-  { name: "Friday", value: 5 },
-  { name: "Saturday", value: 6 },
+const DAYS_OF_WEEK = [
+  { value: 0, label: "Sunday", shortLabel: "Sun" },
+  { value: 1, label: "Monday", shortLabel: "Mon" },
+  { value: 2, label: "Tuesday", shortLabel: "Tue" },
+  { value: 3, label: "Wednesday", shortLabel: "Wed" },
+  { value: 4, label: "Thursday", shortLabel: "Thu" },
+  { value: 5, label: "Friday", shortLabel: "Fri" },
+  { value: 6, label: "Saturday", shortLabel: "Sat" },
 ]
 
-const DEFAULT_HOURS: WorkingHours[] = [
-  { day_of_week: 0, start_time: "10:00", end_time: "16:00", is_closed: true }, // Sunday - closed
+const DEFAULT_WORKING_HOURS: WorkingHours[] = [
+  { day_of_week: 0, start_time: "10:00", end_time: "18:00", is_closed: true }, // Sunday
   { day_of_week: 1, start_time: "09:00", end_time: "18:00", is_closed: false }, // Monday
   { day_of_week: 2, start_time: "09:00", end_time: "18:00", is_closed: false }, // Tuesday
   { day_of_week: 3, start_time: "09:00", end_time: "18:00", is_closed: false }, // Wednesday
@@ -43,160 +42,116 @@ const DEFAULT_HOURS: WorkingHours[] = [
 ]
 
 export function Step4WorkingHours({ storeId, onNext, onBack }: Step4WorkingHoursProps) {
-  const [workingHours, setWorkingHours] = useState<WorkingHours[]>(DEFAULT_HOURS)
-  const [isLoading, setIsLoading] = useState(false)
-  const { toast } = useToast()
+  const [workingHours, setWorkingHours] = useState<WorkingHours[]>(DEFAULT_WORKING_HOURS)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
-  // Fetch existing working hours
-  useEffect(() => {
-    fetchWorkingHours()
-  }, [storeId])
-
-  const fetchWorkingHours = async () => {
-    try {
-      const response = await fetch(`/api/barber/working-hours?storeId=${storeId}`)
-      if (response.ok) {
-        const data = await response.json()
-        if (data.workingHours && data.workingHours.length > 0) {
-          setWorkingHours(data.workingHours)
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch working hours:", error)
-    }
+  const updateWorkingHour = (dayOfWeek: number, field: keyof WorkingHours, value: string | boolean) => {
+    setWorkingHours((prev) => prev.map((wh) => (wh.day_of_week === dayOfWeek ? { ...wh, [field]: value } : wh)))
   }
 
-  const handleSave = async () => {
-    setIsLoading(true)
+  const handleContinue = async () => {
+    setLoading(true)
+    setError("")
+
     try {
       const response = await fetch("/api/barber/working-hours", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          storeId,
-          workingHours,
-        }),
+        body: JSON.stringify({ storeId, workingHours }),
       })
 
-      if (response.ok) {
-        toast({
-          title: "Working Hours Saved",
-          description: "Your business hours have been set successfully.",
-        })
-        onNext()
-      } else {
-        throw new Error("Failed to save working hours")
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save working hours")
       }
-    } catch (error) {
-      console.error("Failed to save working hours:", error)
-      toast({
-        title: "Error",
-        description: "Failed to save working hours. Please try again.",
-        variant: "destructive",
-      })
+
+      onNext()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save working hours")
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
-  }
-
-  const updateWorkingHours = (dayOfWeek: number, field: keyof WorkingHours, value: string | boolean) => {
-    setWorkingHours((prev) => prev.map((wh) => (wh.day_of_week === dayOfWeek ? { ...wh, [field]: value } : wh)))
-  }
-
-  const copyToAllDays = (sourceDay: WorkingHours) => {
-    setWorkingHours((prev) =>
-      prev.map((wh) => ({
-        ...wh,
-        start_time: sourceDay.start_time,
-        end_time: sourceDay.end_time,
-        is_closed: sourceDay.is_closed,
-      })),
-    )
-    toast({
-      title: "Hours Copied",
-      description: "Working hours have been applied to all days.",
-    })
   }
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <Clock className="h-12 w-12 text-primary mx-auto mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Set Your Working Hours</h2>
-        <p className="text-muted-foreground">Define when customers can book appointments at your barbershop.</p>
+      <div className="text-center space-y-2">
+        <h2 className="text-2xl font-bold">Set Your Working Hours</h2>
+        <p className="text-muted-foreground">
+          Define when you're available for appointments. Customers can only book during these hours.
+        </p>
       </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
-          <CardTitle>Business Hours</CardTitle>
-          <CardDescription>
-            Set your operating hours for each day of the week. Customers can only book during these times.
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Weekly Schedule
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {DAYS.map((day) => {
-            const dayHours = workingHours.find((wh) => wh.day_of_week === day.value) || DEFAULT_HOURS[day.value]
+        <CardContent>
+          <div className="space-y-4">
+            {DAYS_OF_WEEK.map((day) => {
+              const dayHours = workingHours.find((wh) => wh.day_of_week === day.value) || {
+                day_of_week: day.value,
+                start_time: "09:00",
+                end_time: "18:00",
+                is_closed: false,
+              }
 
-            return (
-              <div key={day.value} className="flex items-center gap-4 p-4 border rounded-lg">
-                <div className="w-24">
-                  <Label className="font-medium">{day.name}</Label>
-                </div>
+              return (
+                <div key={day.value} className="flex items-center gap-4 p-4 border rounded-lg">
+                  <div className="w-24 font-medium">{day.label}</div>
 
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={!dayHours.is_closed}
-                    onCheckedChange={(checked) => updateWorkingHours(day.value, "is_closed", !checked)}
-                  />
-                  <Label className="text-sm">{dayHours.is_closed ? "Closed" : "Open"}</Label>
-                </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={!dayHours.is_closed}
+                      onCheckedChange={(checked) => updateWorkingHour(day.value, "is_closed", !checked)}
+                    />
+                    <span className="text-sm text-muted-foreground w-12">{dayHours.is_closed ? "Closed" : "Open"}</span>
+                  </div>
 
-                {!dayHours.is_closed && (
-                  <>
+                  {!dayHours.is_closed && (
                     <div className="flex items-center gap-2">
-                      <Label htmlFor={`start-${day.value}`} className="text-sm">
-                        From:
-                      </Label>
                       <Input
-                        id={`start-${day.value}`}
                         type="time"
                         value={dayHours.start_time}
-                        onChange={(e) => updateWorkingHours(day.value, "start_time", e.target.value)}
+                        onChange={(e) => updateWorkingHour(day.value, "start_time", e.target.value)}
                         className="w-32"
                       />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor={`end-${day.value}`} className="text-sm">
-                        To:
-                      </Label>
+                      <span className="text-muted-foreground">to</span>
                       <Input
-                        id={`end-${day.value}`}
                         type="time"
                         value={dayHours.end_time}
-                        onChange={(e) => updateWorkingHours(day.value, "end_time", e.target.value)}
+                        onChange={(e) => updateWorkingHour(day.value, "end_time", e.target.value)}
                         className="w-32"
                       />
                     </div>
-
-                    <Button variant="outline" size="sm" onClick={() => copyToAllDays(dayHours)} className="text-xs">
-                      Copy to all
-                    </Button>
-                  </>
-                )}
-              </div>
-            )
-          })}
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </CardContent>
       </Card>
 
       {/* Navigation */}
-      <div className="flex justify-between pt-4">
+      <div className="flex justify-between pt-6">
         <Button variant="outline" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
-        <Button onClick={handleSave} disabled={isLoading}>
-          {isLoading ? "Saving..." : "Continue to Images"}
+        <Button onClick={handleContinue} disabled={loading} className="min-w-[120px]">
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Continue
         </Button>
       </div>
     </div>

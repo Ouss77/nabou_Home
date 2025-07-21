@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Scissors, Sparkles, Hand, Eye, Palette, Heart, Flower2, Zap, User, Crown } from "lucide-react"
+import { Scissors, Sparkles, Hand, Eye, Palette, Heart, Zap, Brush, Flower2, Plus, ArrowLeft } from "lucide-react"
 
 interface Step2ActivityProps {
   onNext: (activity: string) => void
@@ -15,23 +15,23 @@ const ACTIVITIES = [
   {
     id: "barber",
     name: "Barber",
-    description: "Men's haircuts, beard trims, and traditional grooming",
+    description: "Men's haircuts, beard trims, and traditional barbering services",
     icon: Scissors,
     color: "bg-blue-500",
     popular: true,
   },
   {
-    id: "hairstylist",
+    id: "hair-stylist",
     name: "Hair Stylist",
-    description: "Hair cutting, coloring, styling for all genders",
+    description: "Hair cutting, coloring, styling, and treatments for all genders",
     icon: Sparkles,
     color: "bg-purple-500",
     popular: true,
   },
   {
-    id: "nail_artist",
+    id: "nail-artist",
     name: "Nail Artist",
-    description: "Manicures, pedicures, nail art and extensions",
+    description: "Manicures, pedicures, nail art, and nail enhancements",
     icon: Hand,
     color: "bg-pink-500",
     popular: true,
@@ -39,61 +39,61 @@ const ACTIVITIES = [
   {
     id: "esthetician",
     name: "Esthetician",
-    description: "Facials, skincare treatments, and skin analysis",
+    description: "Facial treatments, skincare, and beauty therapy services",
     icon: Sparkles,
     color: "bg-green-500",
     popular: true,
   },
   {
-    id: "brow_specialist",
+    id: "brow-specialist",
     name: "Brow Specialist",
-    description: "Eyebrow shaping, threading, tinting, and microblading",
+    description: "Eyebrow shaping, threading, microblading, and brow treatments",
     icon: Eye,
     color: "bg-amber-500",
     popular: false,
   },
   {
-    id: "makeup_artist",
+    id: "makeup-artist",
     name: "Makeup Artist",
-    description: "Professional makeup application for events and photos",
+    description: "Professional makeup application for events, weddings, and photoshoots",
     icon: Palette,
     color: "bg-rose-500",
     popular: false,
   },
   {
-    id: "lash_technician",
+    id: "lash-technician",
     name: "Lash Technician",
-    description: "Eyelash extensions, lifts, and tinting services",
+    description: "Eyelash extensions, lifts, tints, and lash enhancement services",
     icon: Eye,
     color: "bg-indigo-500",
     popular: false,
   },
   {
-    id: "massage_therapist",
+    id: "massage-therapist",
     name: "Massage Therapist",
-    description: "Therapeutic and relaxation massage treatments",
+    description: "Therapeutic massage, relaxation, and wellness treatments",
     icon: Heart,
     color: "bg-teal-500",
     popular: false,
   },
   {
-    id: "tattoo_artist",
+    id: "tattoo-artist",
     name: "Tattoo Artist",
-    description: "Custom tattoo design and application",
+    description: "Custom tattoos, tattoo design, and body art services",
     icon: Zap,
     color: "bg-red-500",
     popular: false,
   },
   {
-    id: "permanent_makeup",
+    id: "permanent-makeup",
     name: "Permanent Makeup Artist",
-    description: "Microblading, lip blush, and permanent cosmetics",
-    icon: Crown,
-    color: "bg-violet-500",
+    description: "Microblading, lip blush, eyeliner tattoo, and cosmetic tattooing",
+    icon: Brush,
+    color: "bg-orange-500",
     popular: false,
   },
   {
-    id: "wellness_coach",
+    id: "wellness-coach",
     name: "Wellness Coach",
     description: "Health coaching, nutrition guidance, and lifestyle consulting",
     icon: Flower2,
@@ -103,8 +103,8 @@ const ACTIVITIES = [
   {
     id: "other",
     name: "Other",
-    description: "Different type of beauty or wellness service",
-    icon: User,
+    description: "Custom services or specialized treatments not listed above",
+    icon: Plus,
     color: "bg-gray-500",
     popular: false,
   },
@@ -128,120 +128,86 @@ export function Step2Activity({ onNext, onBack }: Step2ActivityProps) {
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <User className="h-12 w-12 text-primary mx-auto mb-4" />
-        <h2 className="text-xl font-semibold mb-2">What's your main activity?</h2>
+      <div className="text-center space-y-2">
+        <h2 className="text-2xl font-bold">What's Your Main Activity?</h2>
         <p className="text-muted-foreground">
-          Select your primary area of expertise to get personalized service recommendations.
+          Select your primary area of expertise to get personalized service recommendations
         </p>
       </div>
 
       {/* Popular Activities */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Crown className="h-5 w-5 text-amber-500" />
-            Popular Activities
-          </CardTitle>
-          <CardDescription>Most common service providers on our platform.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {popularActivities.map((activity) => {
-              const IconComponent = activity.icon
-              const isSelected = selectedActivity === activity.id
-
-              return (
-                <div
-                  key={activity.id}
-                  className={`
-                    relative p-4 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md
-                    ${isSelected ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/50"}
-                  `}
-                  onClick={() => handleActivitySelect(activity.id)}
-                >
-                  <div className="flex items-start gap-3">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold">Popular Activities</h3>
+          <Badge variant="secondary">Most Common</Badge>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {popularActivities.map((activity) => {
+            const IconComponent = activity.icon
+            return (
+              <Card
+                key={activity.id}
+                className={`cursor-pointer transition-all hover:shadow-md ${
+                  selectedActivity === activity.id ? "ring-2 ring-primary border-primary" : "hover:border-primary/50"
+                }`}
+                onClick={() => handleActivitySelect(activity.id)}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-lg ${activity.color} text-white`}>
                       <IconComponent className="h-5 w-5" />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium">{activity.name}</h3>
-                        {activity.popular && (
-                          <Badge variant="secondary" className="text-xs">
-                            Popular
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{activity.description}</p>
-                    </div>
+                    <CardTitle className="text-lg">{activity.name}</CardTitle>
                   </div>
-                  {isSelected && (
-                    <div className="absolute top-2 right-2">
-                      <div className="h-5 w-5 bg-primary rounded-full flex items-center justify-center">
-                        <div className="h-2 w-2 bg-white rounded-full" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{activity.description}</p>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      </div>
 
       {/* Other Activities */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Other Activities</CardTitle>
-          <CardDescription>Additional specialized services and treatments.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {otherActivities.map((activity) => {
-              const IconComponent = activity.icon
-              const isSelected = selectedActivity === activity.id
-
-              return (
-                <div
-                  key={activity.id}
-                  className={`
-                    relative p-4 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md
-                    ${isSelected ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/50"}
-                  `}
-                  onClick={() => handleActivitySelect(activity.id)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${activity.color} text-white`}>
-                      <IconComponent className="h-5 w-5" />
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Other Specialties</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {otherActivities.map((activity) => {
+            const IconComponent = activity.icon
+            return (
+              <Card
+                key={activity.id}
+                className={`cursor-pointer transition-all hover:shadow-md ${
+                  selectedActivity === activity.id ? "ring-2 ring-primary border-primary" : "hover:border-primary/50"
+                }`}
+                onClick={() => handleActivitySelect(activity.id)}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded ${activity.color} text-white`}>
+                      <IconComponent className="h-4 w-4" />
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium mb-1">{activity.name}</h3>
-                      <p className="text-sm text-muted-foreground">{activity.description}</p>
-                    </div>
+                    <CardTitle className="text-base">{activity.name}</CardTitle>
                   </div>
-                  {isSelected && (
-                    <div className="absolute top-2 right-2">
-                      <div className="h-5 w-5 bg-primary rounded-full flex items-center justify-center">
-                        <div className="h-2 w-2 bg-white rounded-full" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <p className="text-xs text-muted-foreground">{activity.description}</p>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      </div>
 
       {/* Navigation */}
-      <div className="flex justify-between pt-4">
+      <div className="flex justify-between pt-6">
         <Button variant="outline" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
-        <Button onClick={handleContinue} disabled={!selectedActivity}>
-          Continue to Services
-          {!selectedActivity && <span className="ml-2 text-xs">(Select an activity)</span>}
+        <Button onClick={handleContinue} disabled={!selectedActivity} className="min-w-[120px]">
+          Continue
         </Button>
       </div>
     </div>
