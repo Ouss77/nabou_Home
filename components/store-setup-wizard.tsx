@@ -6,10 +6,11 @@ import { Progress } from "@/components/ui/progress"
 import { Loader2 } from "lucide-react"
 import { StepIndicator } from "./wizard/step-indicator"
 import { Step1StoreInfo } from "./wizard/step1-store-info"
-import { Step2Services } from "./wizard/step2-services"
-import { Step3WorkingHours } from "./wizard/step3-working-hours"
-import { Step4Images } from "./wizard/step4-images"
-import { Step5Confirmation } from "./wizard/step5-confirmation"
+import { Step2Activity } from "./wizard/step2-activity"
+import { Step3Services } from "./wizard/step3-services"
+import { Step4WorkingHours } from "./wizard/step4-working-hours"
+import { Step5Images } from "./wizard/step5-images"
+import { Step6Confirmation } from "./wizard/step6-confirmation"
 import type { Store } from "@/lib/db"
 
 interface StoreSetupWizardProps {
@@ -18,11 +19,12 @@ interface StoreSetupWizardProps {
   onSuccess: (store: Store) => void
 }
 
-const WIZARD_STEPS = ["Store Info", "Services", "Working Hours", "Images", "Complete"]
+const WIZARD_STEPS = ["Store Info", "Activity", "Services", "Working Hours", "Images", "Complete"]
 
 export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWizardProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [store, setStore] = useState<Store | null>(null)
+  const [selectedActivity, setSelectedActivity] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
 
   // Reset wizard state when dialog opens/closes
@@ -30,6 +32,7 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
     if (open) {
       setCurrentStep(1)
       setStore(null)
+      setSelectedActivity("")
       setIsLoading(false)
     }
   }, [open])
@@ -49,7 +52,7 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
     imageUrl?: string
   }) => {
     setIsLoading(true)
-    try { 
+    try {
       const response = await fetch("/api/barber/store", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -71,8 +74,13 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
     }
   }
 
+  const handleActivitySelect = (activity: string) => {
+    setSelectedActivity(activity)
+    handleNext()
+  }
+
   const handleFinish = () => {
-    setCurrentStep(5) // Go to confirmation step
+    setCurrentStep(6) // Go to confirmation step
   }
 
   const handleComplete = () => {
@@ -98,13 +106,22 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
       case 1:
         return <Step1StoreInfo onNext={handleStoreCreate} />
       case 2:
-        return store ? <Step2Services storeId={store.id} onNext={handleNext} onBack={handleBack} /> : null
+        return <Step2Activity onNext={handleActivitySelect} onBack={handleBack} />
       case 3:
-        return store ? <Step3WorkingHours storeId={store.id} onNext={handleNext} onBack={handleBack} /> : null
+        return store ? (
+          <Step3Services
+            storeId={store.id}
+            selectedActivity={selectedActivity}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        ) : null
       case 4:
-        return store ? <Step4Images storeId={store.id} onFinish={handleFinish} onBack={handleBack} /> : null
+        return store ? <Step4WorkingHours storeId={store.id} onNext={handleNext} onBack={handleBack} /> : null
       case 5:
-        return store ? <Step5Confirmation store={store} onComplete={handleComplete} /> : null
+        return store ? <Step5Images storeId={store.id} onFinish={handleFinish} onBack={handleBack} /> : null
+      case 6:
+        return store ? <Step6Confirmation store={store} onComplete={handleComplete} /> : null
       default:
         return <div>Step not found</div>
     }
@@ -116,7 +133,7 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Welcome! Let's Set Up Your Store</DialogTitle>
           <DialogDescription>
-            Follow these steps to create your barber profile and start accepting appointments.
+            Follow these steps to create your profile and start accepting appointments.
           </DialogDescription>
         </DialogHeader>
 
