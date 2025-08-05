@@ -144,6 +144,7 @@ export interface Translations {
     removeBlock: string
   }
   registration: {
+    of: string
     title: string
     subtitle: string
     fullName: string
@@ -164,6 +165,9 @@ export interface Translations {
     passwordsDontMatch: string
   }
   common: {
+    previous: string
+    previous: string
+    next: string
     cancel: string
     save: string
     delete: string

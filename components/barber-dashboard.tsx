@@ -16,25 +16,24 @@ import {
   ExternalLink,
   Settings,
   Clock,
+  Globe,
   Copy,
   RefreshCw,
-  Globe,
 } from "lucide-react"
 import { StoreSetupDialog } from "@/components/store-setup-dialog"
-import { StoreSetupWizard } from "@/components/store-setup-wizard"
+import {StoreSetupWizard} from "@/components/store-setup-wizard"
 import { ServiceManagementDialog } from "@/components/service-management-dialog"
 import { BlockTimeDialog } from "@/components/block-time-dialog"
 import { AppointmentCalendar } from "@/components/appointment-calendar"
 import { ImageUpload } from "@/components/image-upload"
 import { AnalyticsDashboard } from "@/components/analytics-dashboard"
 import { AppointmentStatusSelector } from "@/components/appointment-status-selector"
-import { LandingPageEditor } from "@/components/landing-page-editor"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useLanguage } from "@/components/language-provider"
 import { useToast } from "@/hooks/use-toast"
 import { formatCurrency } from "@/lib/currency-utils"
-
+import { LandingPageEditor } from "./landing-page-editor"
 interface User {
   id: string
   email: string
@@ -110,9 +109,11 @@ interface BarberDashboardProps {
   user: User
   storeId: string
   store: StoreProps | null
+  //services: Service[]
   appointments: Appointment[]
   workingHours: WorkingHours[]
   userStatus?: string
+
 }
 
 export function BarberDashboard({
@@ -120,6 +121,7 @@ export function BarberDashboard({
   store,
   storeId,
   userStatus,
+  //services: initialServices,
   appointments: initialAppointments,
   workingHours,
 }: BarberDashboardProps) {
@@ -139,12 +141,12 @@ export function BarberDashboard({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<"basic" | "images" | "hours">("basic")
   const [showStoreSetupWizard, setShowStoreSetupWizard] = useState(false)
+  const [landingPageData, setLandingPageData] = useState<any>(null)
 
   const router = useRouter()
 
-  const isTrialExpired = userStatus === "expired"
-  console.log("User status:", userStatus)
-
+    const isTrialExpired = userStatus === "expired"
+    console.log("User status:", userStatus)
   const fetchServices = async () => {
     const res = await fetch(`/api/barber/services?storeId=${storeId}`)
     const data = await res.json()
@@ -174,6 +176,15 @@ export function BarberDashboard({
     }
   }, [storeId, store?.id])
 
+  useEffect(() => {
+    if (store?.id) {
+      fetch(`/api/barber/landing-page?storeId=${store.id}`)
+        .then((res) => res.json())
+        .then(setLandingPageData)
+        .catch(console.error)
+    }
+  }, [store?.id])
+ 
   const refreshDashboardData = useCallback(async () => {
     if (!store?.id) return
 
@@ -263,7 +274,7 @@ export function BarberDashboard({
 
   const handleCopyLink = async () => {
     if (store?.id) {
-      const publicPageUrl = `${window.location.origin}/book/${store.slug || store.id}`
+      const publicPageUrl = `${window.location.origin}/profile/${store.slug || store.id}`
       try {
         await navigator.clipboard.writeText(publicPageUrl)
         toast({
@@ -275,26 +286,6 @@ export function BarberDashboard({
         toast({
           title: t.common?.error || "Error",
           description: "Failed to copy link to clipboard.",
-          variant: "destructive",
-        })
-      }
-    }
-  }
-
-  const handleCopyProfileLink = async () => {
-    if (store?.slug) {
-      const profilePageUrl = `${window.location.origin}/profile/${store.slug}`
-      try {
-        await navigator.clipboard.writeText(profilePageUrl)
-        toast({
-          title: "Profile Link Copied",
-          description: profilePageUrl,
-        })
-      } catch (err) {
-        console.error("Failed to copy profile link:", err)
-        toast({
-          title: "Error",
-          description: "Failed to copy profile link to clipboard.",
           variant: "destructive",
         })
       }
@@ -328,88 +319,98 @@ export function BarberDashboard({
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-50">
-        <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4 flex-nowrap overflow-x-auto overflow-y-hidden no-scrollbar">
-          {/* Left Section - Always in line */}
-          <div className="flex items-center gap-3 shrink-0">
-            <Link href="/" className="flex items-center gap-2 hover:gap-3 transition-all">
-              <Scissors className="h-8 w-8 text-slate-800" />
-              <span className="text-2xl font-bold whitespace-nowrap text-slate-800">BarberBook</span>
-            </Link>
-            <Badge variant="secondary" className="whitespace-nowrap">
-              {t.nav?.barber || "Barber"}
-            </Badge>
-          </div>
+    <header className="bg-gradient-to-r from-purple-500 via-pink-400 to-fuchsia-500 sticky top-0 z-50 border-b shadow-md">
+      <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4 flex-nowrap overflow-x-auto overflow-y-hidden no-scrollbar text-white">
+        
+        {/* Left Section */}
+        <div className="flex items-center gap-3 shrink-0">
+          <Link href="/" className="flex items-center gap-2 hover:gap-3 transition-all">
+            <Scissors className="h-8 w-8 text-white" />
+            <span className="text-2xl font-extrabold whitespace-nowrap">Nabou</span>
+          </Link>
 
-          {/* Right Section - Stays in single line whenever possible */}
-          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-            {/* User greeting - disappears on smallest screens */}
-            <span className="text-sm text-slate-600 whitespace-nowrap hidden xs:inline">
-              {t.barberDashboard?.welcome || "Welcome"}, <span className="font-medium">{user.name}</span>
-            </span>
+          <Badge variant="secondary" className="bg-white text-purple-700 font-medium whitespace-nowrap">
+            {t.nav?.barber || "Barber"}
+          </Badge>
 
-            {/* Refresh button - only show if store exists */}
-            {store && (
+          <span className="text-sm whitespace-nowrap hidden sm:inline font-medium">
+            Hello Mr {user.name}
+          </span>
+        </div>
+
+        {/* Right Section */}
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0 text-sm">
+          <span className="hidden xs:inline font-light">
+            {t.barberDashboard?.welcome || "Welcome"}, <span className="font-medium">{user.name}</span>
+          </span>
+
+          {store && (
+            <>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={refreshDashboardData}
+                onClick={() => startTransition(refreshDashboardData)}
                 disabled={isRefreshing}
-                className="whitespace-nowrap shrink-0 bg-transparent"
+                className="bg-white/10 hover:bg-white/20 border-white text-white"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
                 <span className="hidden sm:inline">Refresh</span>
               </Button>
-            )}
 
-            {/* Profile page link */}
-            {store && (
-              <Button variant="outline" size="sm" asChild className="whitespace-nowrap shrink-0 bg-transparent">
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="bg-white/10 hover:bg-white/20 border-white text-white"
+              >
                 <Link href={`/profile/${store.slug || store.id}`} target="_blank">
                   <Globe className="h-4 w-4 mr-2" />
                   <span className="hidden sm:inline">My Profile</span>
                   <span className="sm:hidden">Profile</span>
                 </Link>
               </Button>
-            )}
 
-            {/* Public page and Copy Link buttons - remains compact */}
-            {store && (
-              <>
-                <Button variant="outline" size="sm" asChild className="whitespace-nowrap shrink-0 bg-transparent">
-                  <Link href={`/book/${store.slug || store.id}`} target="_blank">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">{t.barberDashboard?.viewPublicPage || "View Public Page"}</span>
-                    <span className="sm:hidden">Book Page</span>
-                  </Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyLink}
-                  className="whitespace-nowrap shrink-0 bg-transparent"
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">{t.barberDashboard?.copyLink || "Copy Link"}</span>
-                  <span className="sm:hidden">Copy</span>
-                </Button>
-              </>
-            )}
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="bg-white/10 hover:bg-white/20 border-white text-white"
+              >
+                <Link href={`/book/${store.slug || store.id}`} target="_blank">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">
+                    {t.barberDashboard?.viewPublicPage || "View Public Page"}
+                  </span>
+                  <span className="sm:hidden">Book Page</span>
+                </Link>
+              </Button>
 
-            {/* Logout button - remains compact */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              className="whitespace-nowrap shrink-0 bg-transparent"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">{t.nav?.logout || "Logout"}</span>
-              <span className="sm:hidden">Exit</span>
-            </Button>
-          </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyLink}
+                className="bg-white/10 hover:bg-white/20 border-white text-white"
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">{t.barberDashboard?.copyLink || "Copy Link"}</span>
+                <span className="sm:hidden">Copy</span>
+              </Button>
+            </>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="bg-white/10 hover:bg-white/20 border-white text-white"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">{t.nav?.logout || "Logout"}</span>
+            <span className="sm:hidden">Exit</span>
+          </Button>
         </div>
-      </header>
+      </div>
+    </header>
 
       <style jsx>{`
         .no-scrollbar::-webkit-scrollbar {
@@ -421,355 +422,368 @@ export function BarberDashboard({
         }
       `}</style>
 
-      <div className="hidden md:grid md:grid-cols-4 m-5 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t.barberDashboard?.todayAppointments || "Today's Appointments"}
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{todayAppointments}</div>
-            <p className="text-xs text-muted-foreground">Live count</p>
-          </CardContent>
-        </Card>
+        <div className="hidden md:grid md:grid-cols-4 m-5 gap-6 mb-8">
+          <Card className="bg-white shadow-md rounded-2xl border-l-4 border-purple-500 hover:shadow-lg transition">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-semibold text-gray-700">
+                {t.barberDashboard?.todayAppointments || "Today's Appointments"}
+              </CardTitle>
+              <Calendar className="h-5 w-5 text-purple-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-pink-600">{todayAppointments}</div>
+              <p className="text-xs text-gray-500">Live count</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t.barberDashboard?.totalAppointments || "Total Appointments"}
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{appointments.length}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
-          </CardContent>
-        </Card>
+          <Card className="bg-white shadow-md rounded-2xl border-l-4 border-pink-500 hover:shadow-lg transition">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-semibold text-gray-700">
+                {t.barberDashboard?.totalAppointments || "Total Appointments"}
+              </CardTitle>
+              <Users className="h-5 w-5 text-pink-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-purple-600">{appointments.length}</div>
+              <p className="text-xs text-gray-500">All time</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t.barberDashboard?.services || "Services"}</CardTitle>
-            <Scissors className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{services.length}</div>
-            <p className="text-xs text-muted-foreground">Active services</p>
-          </CardContent>
-        </Card>
+          <Card className="bg-white shadow-md rounded-2xl border-l-4 border-purple-400 hover:shadow-lg transition">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-semibold text-gray-700">
+                {t.barberDashboard?.services || "Services"}
+              </CardTitle>
+              <Scissors className="h-5 w-5 text-purple-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-pink-600">{services.length}</div>
+              <p className="text-xs text-gray-500">Active services</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t.barberDashboard?.totalRevenue || "Total Revenue"}</CardTitle>
-            <Store className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalRevenue(appointments, services)} €</div>
-            <p className="text-xs text-muted-foreground">Completed bookings</p>
-          </CardContent>
-        </Card>
+          <Card className="bg-white shadow-md rounded-2xl border-l-4 border-pink-400 hover:shadow-lg transition">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-semibold text-gray-700">
+                {t.barberDashboard?.totalRevenue || "Total Revenue"}
+              </CardTitle>
+              <Store className="h-5 w-5 text-pink-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-purple-600">{totalRevenue(appointments, services)} €</div>
+              <p className="text-xs text-gray-500">Completed bookings</p>
+            </CardContent>
+          </Card>
       </div>
 
       {/* Main Content */}
-      {!isTrialExpired && (
-        <div className="p-4 sm:p-6">
-          {!store ? (
-            // Store Setup Required
-            <div className="max-w-2xl mx-auto text-center py-12">
-              <Store className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">
-                {t.barberDashboard?.setUpStore || "Set Up Your Store"}
-              </h2>
-              <p className="text-slate-600 mb-6">
-                {t.barberDashboard?.createProfile || "Create your barber profile to start accepting appointments"}
-              </p>
-              <Button onClick={() => setShowStoreSetupWizard(true)} size="lg">
-                <Plus className="h-4 w-4 mr-2" />
-                {t.barberDashboard?.createStore || "Create Store"}
-              </Button>
-            </div>
-          ) : (
-            <>
-              {/* Main Content */}
-              <Tabs defaultValue="appointments" className="space-y-6">
-                <TabsList>
-                  <TabsTrigger value="appointments">{t.admin?.appointments || "Appointments"}</TabsTrigger>
-                  <TabsTrigger value="calendar">
-                    {t.barberDashboard?.appointmentCalendar || "Appointment Calendar"}
-                  </TabsTrigger>
-                  <TabsTrigger value="analytics">Analytics</TabsTrigger>
-                  <TabsTrigger value="store">{t.barberDashboard?.storeInformation || "Store Information"}</TabsTrigger>
-                  <TabsTrigger value="my-website">
-                    <Globe className="h-4 w-4 mr-2" />
-                    My Website
-                  </TabsTrigger>
-                </TabsList>
+      {!isTrialExpired && (  <div className="p-4 sm:p-6">
+        {!store ? (
+          // Store Setup Required
+          <div className="max-w-2xl mx-auto text-center py-12">
+            <Store className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">
+              {t.barberDashboard?.setUpStore || "Set Up Your Store"}
+            </h2>
+            <p className="text-slate-600 mb-6">
+              {t.barberDashboard?.createProfile || "Create your barber profile to start accepting appointments"}
+            </p>
+            <Button onClick={() => setShowStoreSetupWizard(true)} size="lg">
+              <Plus className="h-4 w-4 mr-2" />
+              {t.barberDashboard?.createStore || "Create Store"}
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* Stats Cards - Using live data */}
+            {/* Main Content */}
+      <Tabs defaultValue="appointments" className="space-y-6">  
+            <TabsList className="bg-gradient-to-r from-purple-100 via-white to-pink-100 p-1 rounded-xl shadow-sm">
+              <TabsTrigger
+                value="appointments"
+                className="data-[state=active]:bg-purple-500 data-[state=active]:text-white rounded-lg px-4 py-2 font-medium text-sm text-slate-700 transition hover:bg-purple-100"
+              >
+                {t.admin?.appointments || "Appointments"}
+              </TabsTrigger>
+              <TabsTrigger
+                value="calendar"
+                className="data-[state=active]:bg-purple-500 data-[state=active]:text-white rounded-lg px-4 py-2 font-medium text-sm text-slate-700 transition hover:bg-purple-100"
+              >
+                {t.barberDashboard?.appointmentCalendar || "Appointment Calendar"}
+              </TabsTrigger>
+              <TabsTrigger
+                value="analytics"
+                className="data-[state=active]:bg-purple-500 data-[state=active]:text-white rounded-lg px-4 py-2 font-medium text-sm text-slate-700 transition hover:bg-purple-100"
+              >
+                Analytics
+              </TabsTrigger>
+              <TabsTrigger
+                value="store"
+                className="data-[state=active]:bg-purple-500 data-[state=active]:text-white rounded-lg px-4 py-2 font-medium text-sm text-slate-700 transition hover:bg-purple-100"
+              >
+                {t.barberDashboard?.storeInformation || "Store Information"}
+              </TabsTrigger>
+              <TabsTrigger
+                value="landing-page-editor"
+                className="data-[state=active]:bg-purple-500 data-[state=active]:text-white rounded-lg px-4 py-2 font-medium text-sm text-slate-700 transition hover:bg-purple-100"
+              >
+                {t.barberDashboard?.landingPageEditor || "Landing Page Editor"}
+              </TabsTrigger>
+            </TabsList>
 
-                <TabsContent value="appointments">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle>{t.barberDashboard?.recentAppointments || "Recent Appointments"}</CardTitle>
-                          <CardDescription>
-                            {t.barberDashboard?.viewManage || "View and manage your appointments"} • Last updated:{" "}
-                            {lastDataUpdate.toLocaleTimeString()}
-                          </CardDescription>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={refreshDashboardData} disabled={isRefreshing}>
-                          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-                          Refresh
-                        </Button>
+              <TabsContent value="appointments">
+                <Card className="bg-white dark:bg-gray-900 shadow-md rounded-2xl border border-gray-200 dark:border-gray-800">
+                  <CardHeader className="p-6 border-b border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-xl font-semibold text-gray-800 dark:text-white">
+                          {t.barberDashboard?.recentAppointments || "Recent Appointments"}
+                        </CardTitle>
+                        <CardDescription className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          {t.barberDashboard?.viewManage || "View and manage your appointments"} • Last updated:{" "}
+                          {lastDataUpdate.toLocaleTimeString()}
+                        </CardDescription>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>{t.admin?.client || "Client"}</TableHead>
-                              <TableHead>{t.booking?.service || "Service"}</TableHead>
-                              <TableHead>{t.booking?.date || "Date"}</TableHead>
-                              <TableHead>{t.booking?.time || "Time"}</TableHead>
-                              <TableHead>{t.admin?.status || "Status"}</TableHead>
-                              <TableHead>{t.booking?.price || "Price"}</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {appointments.map((appointment) => (
-                              <TableRow key={appointment.id}>
-                                <TableCell>
-                                  <div>
-                                    <div className="font-medium">{appointment.client_name}</div>
-                                    <div className="text-sm text-muted-foreground">{appointment.client_email}</div>
-                                    {appointment.client_phone && (
-                                      <div className="text-sm text-muted-foreground">{appointment.client_phone}</div>
-                                    )}
-                                  </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={refreshDashboardData}
+                        disabled={isRefreshing}
+                        className="flex items-center gap-1 text-sm border-gray-300 dark:border-gray-700"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                        Refresh
+                      </Button>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader className="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                          <TableRow>
+                            <TableHead className="px-6 py-4">👤 {t.admin?.client || "Client"}</TableHead>
+                            <TableHead className="px-6 py-4">💈 {t.booking?.service || "Service"}</TableHead>
+                            <TableHead className="px-6 py-4">📅 {t.booking?.date || "Date"}</TableHead>
+                            <TableHead className="px-6 py-4">⏰ {t.booking?.time || "Time"}</TableHead>
+                            <TableHead className="px-6 py-4">📌 {t.admin?.status || "Status"}</TableHead>
+                            <TableHead className="px-6 py-4">💵 {t.booking?.price || "Price"}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+
+                        <TableBody>
+                          {appointments.length > 0 ? (
+                            appointments.map((appointment) => (
+                              <TableRow
+                                key={appointment.id}
+                                className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                              >
+                                <TableCell className="px-6 py-4">
+                                  <div className="font-medium text-gray-900 dark:text-white">{appointment.client_name}</div>
+                                  <div className="text-sm text-muted-foreground">{appointment.client_email}</div>
+                                  {appointment.client_phone && (
+                                    <div className="text-sm text-muted-foreground">{appointment.client_phone}</div>
+                                  )}
                                 </TableCell>
-                                <TableCell>
-                                  <div>
-                                    <div className="font-medium">{appointment.service_name}</div>
-                                    {appointment.notes && (
-                                      <div className="text-sm text-muted-foreground">{appointment.notes}</div>
-                                    )}
-                                  </div>
+
+                                <TableCell className="px-6 py-4">
+                                  <div className="font-medium text-gray-900 dark:text-white">{appointment.service_name}</div>
+                                  {appointment.notes && (
+                                    <div className="text-sm text-muted-foreground">{appointment.notes}</div>
+                                  )}
                                 </TableCell>
-                                <TableCell>{new Date(appointment.appointment_date).toLocaleDateString()}</TableCell>
-                                <TableCell>{appointment.appointment_time}</TableCell>
-                                <TableCell>
+
+                                <TableCell className="px-6 py-4">
+                                  {new Date(appointment.appointment_date).toLocaleDateString()}
+                                </TableCell>
+
+                                <TableCell className="px-6 py-4">{appointment.appointment_time}</TableCell>
+
+                                <TableCell className="px-6 py-4">
                                   <AppointmentStatusSelector
                                     appointmentId={appointment.id}
                                     currentStatus={appointment.status}
                                     onStatusChange={(newStatus) => handleStatusChange(appointment.id, newStatus)}
                                   />
                                 </TableCell>
-                                <TableCell>{formatCurrency(appointment.service_price, language)}</TableCell>
-                              </TableRow>
-                            ))}
-                            {appointments.length === 0 && (
-                              <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                  No appointments found. Your upcoming bookings will appear here.
+
+                                <TableCell className="px-6 py-4">
+                                  {formatCurrency(appointment.service_price, language)}
                                 </TableCell>
                               </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                No appointments found. Your upcoming bookings will appear here.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
 
                 <TabsContent value="calendar">
+              <Card className="rounded-2xl border-0 shadow-xl bg-gradient-to-br from-purple-500 via-pink-400 to-pink-300 text-white">
+                <CardHeader className="bg-white bg-opacity-10 rounded-t-2xl px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-white text-lg sm:text-xl font-semibold">
+                        {t.barberDashboard?.appointmentCalendar || "Appointment Calendar"}
+                      </CardTitle>
+                      <CardDescription className="text-white text-opacity-80 text-sm sm:text-base">
+                        {t.barberDashboard?.calendarFormat || "View appointments in calendar format"}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      onClick={() => setShowBlockTime(true)}
+                      className="bg-white text-pink-500 hover:bg-pink-100 hover:text-pink-600 transition-all duration-300 font-medium rounded-md shadow"
+                    >
+                      <Clock className="h-4 w-4 mr-2" />
+                      {t.blockTime?.blockTime || "Block Time"}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="bg-white bg-opacity-10 rounded-b-2xl px-6 py-6">
+                  <div className="rounded-xl overflow-hidden bg-white bg-opacity-90 shadow-md">
+                    <AppointmentCalendar appointments={appointments} />
+                  </div>
+                </CardContent>
+              </Card>
+                 </TabsContent>
+
+
+              <TabsContent value="analytics">
+                <AnalyticsDashboard appointments={data.appointments} services={data.services} storeId={storeId} />
+              </TabsContent>
+
+              <TabsContent value="store">
+                <div className="grid gap-6">
                   <Card>
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle>{t.barberDashboard?.appointmentCalendar || "Appointment Calendar"}</CardTitle>
+                          <CardTitle>{t.barberDashboard?.storeInformation || "Store Information"}</CardTitle>
                           <CardDescription>
-                            {t.barberDashboard?.calendarFormat || "View appointments in calendar format"}
+                            {t.barberDashboard?.manageStore || "Manage your store details and settings"}
                           </CardDescription>
                         </div>
-                        <Button onClick={() => setShowBlockTime(true)}>
-                          <Clock className="h-4 w-4 mr-2" />
-                          {t.blockTime?.blockTime || "Block Time"}
+                        <Button onClick={() => { setActiveTab("basic"); setShowStoreSetup(true); }} variant="outline">
+                          <Settings className="h-4 w-4 mr-2" />
+                          {t.barberDashboard?.editStore || "Edit Store"}
                         </Button>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <AppointmentCalendar appointments={appointments} />
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="font-medium">{store.title}</h3>
+                          <p className="text-sm text-muted-foreground">{store.address}</p>
+                        </div>
+                        {store.description && <p className="text-sm">{store.description}</p>}
+                      </div>
                     </CardContent>
                   </Card>
-                </TabsContent>
 
-                <TabsContent value="analytics">
-                  <AnalyticsDashboard appointments={data.appointments} services={data.services} storeId={storeId} />
-                </TabsContent>
+                  {/* Store Images */}
+                  <ImageUpload storeId={store.id} images={storeImages} onImagesChange={fetchStoreImages} />
 
-                <TabsContent value="store">
-                  <div className="grid gap-6">
-                    <Card>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle>{t.barberDashboard?.storeInformation || "Store Information"}</CardTitle>
-                            <CardDescription>
-                              {t.barberDashboard?.manageStore || "Manage your store details and settings"}
-                            </CardDescription>
-                          </div>
-                          <Button
-                            onClick={() => {
-                              setActiveTab("basic")
-                              setShowStoreSetup(true)
-                            }}
-                            variant="outline"
-                          >
-                            <Settings className="h-4 w-4 mr-2" />
-                            {t.barberDashboard?.editStore || "Edit Store"}
-                          </Button>
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle>{t.barberDashboard?.services || "Services"}</CardTitle>
+                          <CardDescription>
+                            {t.barberDashboard?.managePricing || "Manage your services and pricing"}
+                          </CardDescription>
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div>
-                            <h3 className="font-medium">{store.title}</h3>
-                            <p className="text-sm text-muted-foreground">{store.address}</p>
-                          </div>
-                          {store.description && <p className="text-sm">{store.description}</p>}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Store Images */}
-                    <ImageUpload storeId={store.id} images={storeImages} onImagesChange={fetchStoreImages} />
-
-                    <Card>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle>{t.barberDashboard?.services || "Services"}</CardTitle>
-                            <CardDescription>
-                              {t.barberDashboard?.managePricing || "Manage your services and pricing"}
-                            </CardDescription>
-                          </div>
-                          <Button onClick={() => setShowServiceManagement(true)}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            {t.barberDashboard?.manageServices || "Manage Services"}
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          {services.map((service) => (
-                            <div key={service.id} className="flex items-center justify-between p-4 border rounded-lg">
-                              <div>
-                                <h4 className="font-medium">{service.name}</h4>
-                                <p className="text-sm text-muted-foreground">{service.description}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {service.duration_minutes} {t.booking?.minutes || "minutes"}
-                                </p>
-                              </div>
-                              <div className="text-lg font-bold">{formatCurrency(service.price, language)}</div>
+                        <Button onClick={() => setShowServiceManagement(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          {t.barberDashboard?.manageServices || "Manage Services"}
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {services.map((service) => (
+                          <div key={service.id} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div>
+                              <h4 className="font-medium">{service.name}</h4>
+                              <p className="text-sm text-muted-foreground">{service.description}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {service.duration_minutes} {t.booking?.minutes || "minutes"}
+                              </p>
                             </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="flex items-center gap-2">
-                              <Clock className="h-5 w-5" />
-                              Working Hours
-                            </CardTitle>
-                            <CardDescription>Your business hours for customer bookings</CardDescription>
+                            <div className="text-lg font-bold">{formatCurrency(service.price, language)}</div>
                           </div>
-                          <Button
-                            onClick={() => {
-                              setShowStoreSetup(true)
-                              setActiveTab("hours")
-                            }}
-                            variant="outline"
-                          >
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <Clock className="h-5 w-5" />
+                            Working Hours
+                          </CardTitle>
+                          <CardDescription>Your business hours for customer bookings</CardDescription>
+                        </div>
+                          <Button onClick={() => {
+                            setShowStoreSetup(true)
+                            setActiveTab("hours")  // you'll need a state for this (see below)
+                          }} variant="outline">
                             <Settings className="h-4 w-4 mr-2" />
                             Edit Hours
                           </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(
-                            (day, index) => {
-                              const dayHours = workingHours.find((wh) => wh.day_of_week === index)
-                              return (
-                                <div key={day} className="flex items-center justify-between p-2 border rounded">
-                                  <span className="font-medium">{day}</span>
-                                  <span className="text-sm text-muted-foreground">
-                                    {dayHours?.is_closed
-                                      ? "Closed"
-                                      : `${dayHours?.start_time || "09:00"} - ${dayHours?.end_time || "18:00"}`}
-                                  </span>
-                                </div>
-                              )
-                            },
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
 
-                <TabsContent value="my-website">
-                  <div className="space-y-6">
-                    {/* Quick Actions Header */}
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="text-lg font-semibold">Your Professional Landing Page</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Share your profile link with clients to showcase your work and services
-                            </p>
-                          </div>
-                          <div className="flex gap-3">
-                            <Button variant="outline" asChild>
-                              <Link href={`/profile/${store.slug || store.id}`} target="_blank">
-                                <ExternalLink className="h-4 w-4 mr-2" />
-                                View Live Page
-                              </Link>
-                            </Button>
-                            <Button onClick={handleCopyProfileLink} variant="outline">
-                              <Copy className="h-4 w-4 mr-2" />
-                              Copy Profile Link
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(
+                          (day, index) => {
+                            const dayHours = workingHours.find((wh) => wh.day_of_week === index)
+                            return (
+                              <div key={day} className="flex items-center justify-between p-2 border rounded">
+                                <span className="font-medium">{day}</span>
+                                <span className="text-sm text-muted-foreground">
+                                  {dayHours?.is_closed
+                                    ? "Closed"
+                                    : `${dayHours?.start_time || "09:00"} - ${dayHours?.end_time || "18:00"}`}
+                                </span>
+                              </div>
+                            )
+                          },
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
 
-                    {/* Landing Page Editor */}
-                    <LandingPageEditor store={store} />
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </>
-          )}
-        </div>
-      )}
-
+              <TabsContent value="landing-page-editor">
+                <LandingPageEditor storeId={store.id} storeSlug={store.slug ?? store.id} initialData={landingPageData} />
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
+      </div>)}
       {isTrialExpired && (
         <div className="max-w-2xl mx-auto text-center py-12">
           <Clock className="h-16 w-16 text-red-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-red-800 mb-2">
-            {t.barberDashboard?.trialExpired || "Your trial has expired"}
+            {t.barberDashboard?.trialExpired || "Your trial has expired"  }
           </h2>
           <p className="text-red-600 mb-6">
             {t.barberDashboard?.upgradeRequired || "Please upgrade your plan to continue using BarberBook."}
-          </p>
+          </p>  
           <Button onClick={() => router.push("/upgrade")} size="lg">
             <Settings className="h-4 w-4 mr-2" />
             {t.barberDashboard?.upgradeNow || "Upgrade Now"}
@@ -777,29 +791,32 @@ export function BarberDashboard({
         </div>
       )}
 
-      {showStoreSetupWizard && !store && (
-        <StoreSetupWizard
-          open={showStoreSetupWizard}
-          onOpenChange={setShowStoreSetupWizard}
-          onSuccess={(createdStore) => {
-            setShowStoreSetupWizard(false)
-            router.refresh()
-          }}
-        />
-      )}
 
-      {showStoreSetup && store && (
-        <StoreSetupDialog
-          open={showStoreSetup}
-          onOpenChange={setShowStoreSetup}
-          store={store}
-          defaultTab={activeTab}
-          onSuccess={() => {
-            setShowStoreSetup(false)
-            refreshDashboardData()
-          }}
-        />
-      )}
+        {showStoreSetupWizard && !store && (
+  <StoreSetupWizard
+    open={showStoreSetupWizard}
+    onOpenChange={setShowStoreSetupWizard}
+    onSuccess={(createdStore) => {
+      setShowStoreSetupWizard(false)
+      // Optional: refresh or revalidate to load created store
+      router.refresh()
+    }}
+  />
+)}
+
+        {showStoreSetup && store && (
+                      <StoreSetupDialog
+                      open={showStoreSetup}
+                      onOpenChange={setShowStoreSetup}
+                      store={store}
+                      defaultTab={activeTab} // pass the state
+
+            onSuccess={() => {
+              setShowStoreSetup(false)
+              refreshDashboardData()
+            }}
+          />
+        )}
 
       {store && (
         <>
@@ -809,7 +826,8 @@ export function BarberDashboard({
             storeId={store.id}
             services={services}
             onSuccess={() => {
-              fetchServices()
+                        fetchServices() // instantly updates the UI
+
               router.refresh()
               refreshDashboardData()
             }}

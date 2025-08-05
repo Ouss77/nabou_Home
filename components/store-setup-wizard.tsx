@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useLayoutEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { Loader2 } from "lucide-react"
@@ -26,6 +26,7 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
   const [store, setStore] = useState<Store | null>(null)
   const [selectedActivity, setSelectedActivity] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
+  const dialogContentRef = useRef<HTMLDivElement>(null);
 
   // Reset wizard state when dialog opens/closes
   useEffect(() => {
@@ -36,6 +37,13 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
       setIsLoading(false)
     }
   }, [open])
+
+  // Scroll to top when step changes
+  useEffect(() => {
+    if (dialogContentRef.current) {
+      dialogContentRef.current.scrollTop = 0
+    }
+  }, [currentStep])
 
   const handleNext = () => {
     setCurrentStep((prev) => Math.min(prev + 1, WIZARD_STEPS.length))
@@ -129,7 +137,7 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Welcome! Let's Set Up Your Store</DialogTitle>
           <DialogDescription>
@@ -142,7 +150,7 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
           <StepIndicator steps={WIZARD_STEPS} currentStep={currentStep} />
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 pb-6">{renderStepContent()}</div>
+        <div ref={dialogContentRef} className="flex-1 overflow-y-auto px-6 pb-6">{renderStepContent()}</div>
       </DialogContent>
     </Dialog>
   )

@@ -4,35 +4,14 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  Scissors,
-  Calendar,
-  Users,
-  Star,
-  ArrowRight,
-  Menu,
-  X,
-  MapPin,
-  Phone,
-  Mail,
-  Award,
-  Heart,
-  Target,
-  Send,
-  Loader2,
-  AlertCircle,
-  ImageIcon,
-} from "lucide-react"
-import { LanguageSelector } from "@/components/language-selector"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Scissors, Users, ArrowRight, MapPin, Loader2, ImageIcon, Eye, Sparkles, Share2, Brush, CalendarCheck, MousePointerClick, Link2, Home, Star, Instagram, MessageCircle } from "lucide-react"
 import { BarberRegistrationDialog } from "@/components/barber-registration-dialog"
 import { useLanguage } from "@/components/language-provider"
 import { useToast } from "@/hooks/use-toast"
+import Image from "next/image"
 
 interface Store {
   id: string
@@ -41,9 +20,18 @@ interface Store {
   description: string | null
   slug: string
   barber_id: string
+  barber_name: string
   image_url: string | null
   created_at: string
   updated_at: string
+}
+
+interface Barber {
+  id: string
+  name: string
+  email: string
+  store?: Store
+  avatar?: string
 }
 
 export default function HomePage() {
@@ -52,7 +40,9 @@ export default function HomePage() {
   const [showRegistration, setShowRegistration] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [featuredStores, setFeaturedStores] = useState<Store[]>([])
+  const [featuredBarbers, setFeaturedBarbers] = useState<Barber[]>([])
   const [loadingStores, setLoadingStores] = useState(true)
+  const [loadingBarbers, setLoadingBarbers] = useState(true)
   const [storesError, setStoresError] = useState<string | null>(null)
   const [contactForm, setContactForm] = useState({
     name: "",
@@ -61,7 +51,7 @@ export default function HomePage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Fetch featured stores on component mount
+  // Fetch featured stores and barbers on component mount
   useEffect(() => {
     fetchFeaturedStores()
   }, [])
@@ -77,7 +67,7 @@ export default function HomePage() {
       }
 
       const storesData = await response.json()
-      // Show only the first 3 stores as featured
+      console.log("Fetched stores:", storesData)
       setFeaturedStores(Array.isArray(storesData) ? storesData.slice(0, 3) : [])
     } catch (error) {
       console.error("Error fetching stores:", error)
@@ -131,564 +121,406 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100">
-      {/* Enhanced Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200/50 shadow-sm">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-pink-100">
+      {/* Navigation Header */}
+      <nav className="bg-white/95 backdrop-blur-sm border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center py-4">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-3 hover:gap-4 transition-all duration-300">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-pink-500 to-purple-600 rounded-xl shadow-lg">
                 <Scissors className="h-6 w-6 text-white" />
               </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                BarberBook
+              <span className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+                Nabou
               </span>
-            </Link>
+            </div>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
-              <div className="flex items-center gap-6">
-
-                <button
-                  onClick={() => scrollToSection("stores")}
-                  className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200"
-                >
-                  Featured Stores
-                </button>
-                <Link
-                  href="/stores"
-                  className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200"
-                >
-                  All Stores
-                </Link>
-                <Link
-                  href="/products"
-                  className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200"
-                >
-                  Shop
-                </Link>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <LanguageSelector />
-                <Link href="/login">
-                  <Button variant="outline" className="font-medium bg-transparent">
-                    Login
-                  </Button>
-                </Link>
-                <Button
-                  onClick={() => setShowRegistration(true)}
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 font-medium shadow-lg hover:shadow-xl transition-all duration-200"
-                >
-                  Start Free
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
+              <Link href="#features" className="text-purple-700 hover:text-pink-600 font-medium transition-colors">
+                Fonctionnalités
+              </Link>
+              <Link href="#how-it-works" className="text-purple-700 hover:text-pink-600 font-medium transition-colors">
+                Comment ça marche
+              </Link>
             </div>
 
-            {/* Mobile Menu Button */}
-            <div className="md:hidden flex items-center gap-3">
-              <LanguageSelector />
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-200"
+              {/* Action Buttons */}
+            <div className="flex items-center gap-3">
+              <Link href="/login">
+                <Button
+                  variant="outline"
+                  className="bg-white text-purple-700 border-purple-300 hover:bg-purple-50"
+                >
+                  <span className="hidden sm:inline">Connexion</span>
+                  <span className="sm:hidden">Login</span>
+                </Button>
+              </Link>
+              <Button
+                className="bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700 shadow-lg"
+                onClick={() => setShowRegistration(true)}
               >
-                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-              </button>
+                <span className="hidden sm:inline">Commencer gratuitement</span>
+                <span className="sm:hidden">Commencer</span>
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
             </div>
           </div>
-
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className="md:hidden border-t border-gray-200/50 bg-white/95 backdrop-blur-md">
-              <div className="px-4 py-4 space-y-4">
-                <button
-                  onClick={() => scrollToSection("features")}
-                  className="block text-gray-600 hover:text-gray-900 font-medium py-2 w-full text-left"
-                >
-                  Services
-                </button>
-                <button
-                  onClick={() => scrollToSection("about")}
-                  className="block text-gray-600 hover:text-gray-900 font-medium py-2 w-full text-left"
-                >
-                  About
-                </button>
-                <button
-                  onClick={() => scrollToSection("stores")}
-                  className="block text-gray-600 hover:text-gray-900 font-medium py-2 w-full text-left"
-                >
-                  Featured Stores
-                </button>
-                <Link
-                  href="/stores"
-                  className="block text-gray-600 hover:text-gray-900 font-medium py-2 w-full text-left"
-                >
-                  All Stores
-                </Link>
-                <Link
-                  href="/products"
-                  className="block text-gray-600 hover:text-gray-900 font-medium py-2 w-full text-left"
-                >
-                  Shop
-                </Link>
-                <button
-                  onClick={() => scrollToSection("contact")}
-                  className="block text-gray-600 hover:text-gray-900 font-medium py-2 w-full text-left"
-                >
-                  Contact
-                </button>
-                <div className="pt-4 border-t border-gray-200/50 space-y-3">
-                  <Link href="/login" className="block">
-                    <Button variant="outline" className="w-full font-medium bg-transparent">
-                      Login
-                    </Button>
-                  </Link>
-                  <Button
-                    onClick={() => {
-                      setShowRegistration(true)
-                      setMobileMenuOpen(false)
-                    }}
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 font-medium"
-                  >
-                    Start Free
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        {/* Background Elements */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-slate-100/50" />
-        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-200/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-slate-200/30 rounded-full blur-3xl" />
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          {/* Left Content */}
+          <div className="space-y-8">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 bg-pink-100 text-pink-700 px-4 py-2 rounded-full text-sm font-medium">
+              <Star className="h-4 w-4" />2 mois gratuits • Sans engagement
+            </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
-          <div className="text-center">
-            <div>
-              <Badge
-                variant="secondary"
-                className="mb-6 px-4 py-2 text-sm font-medium bg-blue-50 text-blue-700 border-blue-200"
-              >
-                Professional Booking Platform
-              </Badge>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-                Modern Barber Management System
+            {/* Main Headline */}
+            <div className="space-y-4">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold">
+                <span className="bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+                  Ton talent
+                </span>
+                <br />
+                <span className="text-purple-900">mis en lumière,</span>
+                <br />
+                <span className="text-purple-700">pas ton salon.</span>
               </h1>
-              <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-                Streamline your barbershop operations with our comprehensive booking and management platform
+
+              <p className="text-lg text-purple-700 max-w-xl">
+                Crée ton espace pro en 2 minutes, partage-le sur Instagram, TikTok ou WhatsApp, et commence à recevoir
+                des rendez-vous partout où tu exerces.
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4">
               <Button
                 size="lg"
+                className="bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700 shadow-xl text-lg px-8 py-4 rounded-xl"
                 onClick={() => setShowRegistration(true)}
-                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-8 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
               >
-                Start Free
+                Créer mon site Nabou gratuitement
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => scrollToSection("stores")}
-                className="px-8 py-4 text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200"
-              >
-                Book Appointment
+              <Link href={`https://nabou.vercel.app/profile/classic-cuts-barbershop`} className="flex-1">
+                              <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-2 border-pink-300 text-pink-700 hover:bg-pink-50 text-lg px-8 py-4 rounded-xl bg-transparent"
+                  >
+                <Eye className="mr-2 h-5 w-5" />
+              
+                Voir un exemple
               </Button>
+              </Link>
+
+            </div>
+
+            {/* Trust Indicators */}
+            <div className="flex flex-wrap items-center gap-6 text-sm text-purple-600">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>2 mois d'essai offerts
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>5 €/mois ensuite
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                Sans engagement
+              </div>
+            </div>
+          </div>
+
+          {/* Right Visual */}
+          <div className="relative lg:left-20 left-0">
+            <div className="relative bg-gradient-to-br from-pink-400 via-purple-500 to-pink-600 rounded-3xl p-8 shadow-2xl">
+              <Image
+                src="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                alt="Beauty tools and scissors"
+                width={600}
+                height={400}
+                className="w-full h-auto rounded-2xl"
+              />
+              {/* Floating notification */}
+              <div className="absolute -top-4 -right-4 bg-white rounded-full px-4 py-2 shadow-lg flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium text-gray-700">+177 nouveaux clients</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 bg-white/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="features" className="bg-white py-16 lg:py-24">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              Everything You Need to Manage Your Barbershop
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+              <span className="bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+                Ton profil pro, en mieux 💅
+              </span>
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Streamline your operations with our comprehensive suite of tools designed specifically for barbers.
+            <p className="text-lg text-purple-700 max-w-2xl mx-auto">
+              Tout ce dont tu as besoin pour développer ta clientèle et mettre en valeur ton talent
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <div>
-              <Card className="h-full hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-blue-50 to-blue-100/50">
-                <CardHeader>
-                  <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center mb-4">
-                    <Calendar className="h-6 w-6 text-white" />
-                  </div>
-                  <CardTitle className="text-xl">Smart Booking System</CardTitle>
-                  <CardDescription className="text-gray-600">
-                    Let customers book appointments online 24/7 with automatic confirmations and reminders.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Feature Cards */}
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-pink-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                <Sparkles className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-purple-900">Facile à créer</h3>
+              <p className="text-purple-600">Aucune compétence requise, tout est intuitif</p>
             </div>
 
-            <div>
-              <Card className="h-full hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-green-50 to-green-100/50">
-                <CardHeader>
-                  <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center mb-4">
-                    <Users className="h-6 w-6 text-white" />
-                  </div>
-                  <CardTitle className="text-xl">Customer Management</CardTitle>
-                  <CardDescription className="text-gray-600">
-                    Keep track of customer preferences, history, and contact information in one place.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-purple-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                <Share2 className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-purple-900">Partageable partout</h3>
+              <p className="text-purple-600">Insta, TikTok, WhatsApp, QR code...</p>
             </div>
 
-            <div>
-              <Card className="h-full hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-purple-50 to-purple-100/50">
-                <CardHeader>
-                  <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center mb-4">
-                    <Star className="h-6 w-6 text-white" />
-                  </div>
-                  <CardTitle className="text-xl">Service Management</CardTitle>
-                  <CardDescription className="text-gray-600">
-                    Easily manage your services, pricing, and availability with our intuitive interface.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                <Users className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-purple-900">Garde ta clientèle</h3>
+              <p className="text-purple-600">Même en changeant de salon</p>
+            </div>
+
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                <Star className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-purple-900">Mets en avant TON talent</h3>
+              <p className="text-purple-600">Pas ton salon</p>
+            </div>
+
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-pink-400 to-purple-400 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                <Brush className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-purple-900">Personnalisable</h3>
+              <p className="text-purple-600">Photos, book, prestations...</p>
+            </div>
+
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                <CalendarCheck className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-purple-900">RDV instantané</h3>
+              <p className="text-purple-600">Prise de RDV en ligne</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* About Section */}
-      <section id="about" className="py-20 bg-gradient-to-br from-gray-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* How It Works Section */}
+      <section id="how-it-works" className="bg-gradient-to-br from-pink-50 to-purple-50 py-16 lg:py-24">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">About BarberBook</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Revolutionizing the barbershop industry with modern technology and exceptional service
-            </p>
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+              <span className="bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+                Comment ça marche ?
+              </span>
+            </h2>
+            <p className="text-lg text-purple-700">En 3 étapes simples</p>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="space-y-8">
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-4">Our Mission</h3>
-                  <p className="text-gray-600 leading-relaxed">
-                    At BarberBook, we're dedicated to empowering barbershops and salons with cutting-edge technology
-                    that simplifies operations, enhances customer experience, and drives business growth. We believe
-                    that every barber deserves access to professional-grade tools that help them focus on what they do
-                    best – creating exceptional experiences for their clients.
-                  </p>
-                </div>
-
-                <div className="grid sm:grid-cols-3 gap-6">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Target className="h-8 w-8 text-blue-600" />
-                    </div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Innovation</h4>
-                    <p className="text-sm text-gray-600">Continuously evolving with the latest technology</p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Heart className="h-8 w-8 text-green-600" />
-                    </div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Quality</h4>
-                    <p className="text-sm text-gray-600">Delivering exceptional service and reliability</p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Award className="h-8 w-8 text-purple-600" />
-                    </div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Excellence</h4>
-                    <p className="text-sm text-gray-600">Committed to helping businesses thrive</p>
-                  </div>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
+            {/* Step 1 */}
+            <div className="text-center space-y-6">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto shadow-xl">
+                <MousePointerClick className="h-10 w-10 text-white" />
               </div>
-            </div>
-
-            <div className="lg:pl-8">
-              <div className="bg-white rounded-2xl shadow-xl p-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Why Choose BarberBook?</h3>
-                <div className="space-y-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900">Easy Setup</h4>
-                      <p className="text-gray-600 text-sm">Get started in minutes with our intuitive setup process</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                      <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900">24/7 Support</h4>
-                      <p className="text-gray-600 text-sm">Our dedicated team is always here to help you succeed</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <div className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                      <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900">Affordable Pricing</h4>
-                      <p className="text-gray-600 text-sm">
-                        Transparent pricing with no hidden fees or long-term contracts
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                      <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900">Secure & Reliable</h4>
-                      <p className="text-gray-600 text-sm">Enterprise-grade security with 99.9% uptime guarantee</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Stores Section */}
-      <section id="stores" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Featured Barbershops</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Discover top-rated barbershops and book your appointment today
-            </p>
-          </div>
-
-          {/* Loading State */}
-          {loadingStores && (
-            <div className="flex justify-center items-center py-12">
-              <div className="text-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-                <p className="text-gray-600">Loading featured stores...</p>
-              </div>
-            </div>
-          )}
-
-          {/* Error State */}
-          {storesError && (
-            <div className="max-w-md mx-auto">
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{storesError}</AlertDescription>
-              </Alert>
-              <div className="text-center mt-4">
-                <Button onClick={fetchFeaturedStores} variant="outline">
-                  Try Again
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Featured Stores Grid */}
-          {!loadingStores && !storesError && (
-            <>
-              {featuredStores.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <MapPin className="h-8 w-8 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Featured Stores Available</h3>
-                  <p className="text-gray-600 mb-6">We're currently setting up new locations. Check back soon!</p>
-                  <Button onClick={() => setShowRegistration(true)}>
-                    Register Your Store
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-                    {featuredStores.map((store) => (
-                      <StoreCard key={store.id} store={store} />
-                    ))}
-                  </div>
-
-                  {/* View All Stores Button */}
-                  <div className="text-center">
-                    <Link href="/stores">
-                      <Button size="lg" variant="outline" className="px-8 py-4 text-lg font-semibold bg-transparent">
-                        View All Stores
-                        <ArrowRight className="ml-2 h-5 w-5" />
-                      </Button>
-                    </Link>
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* Contact Section */}
-      <section id="contact" className="py-20 bg-gradient-to-br from-blue-50 to-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Get In Touch</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-12">
-            {/* Contact Form */}
-            <div>
-              <Card className="shadow-xl">
-                <CardHeader>
-                  <CardTitle className="text-2xl">Send us a message</CardTitle>
-                  <CardDescription>Fill out the form below and we'll get back to you within 24 hours.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleContactSubmit} className="space-y-6">
-                    <div>
-                      <Label htmlFor="name">Name</Label>
-                      <Input
-                        id="name"
-                        type="text"
-                        value={contactForm.name}
-                        onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                        required
-                        className="mt-1"
-                        placeholder="Your full name"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={contactForm.email}
-                        onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                        required
-                        className="mt-1"
-                        placeholder="your.email@example.com"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="message">Message</Label>
-                      <Textarea
-                        id="message"
-                        value={contactForm.message}
-                        onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                        required
-                        className="mt-1 min-h-[120px]"
-                        placeholder="Tell us how we can help you..."
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          Send Message
-                          <Send className="ml-2 h-4 w-4" />
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Contact Information */}
-            <div className="space-y-8">
               <div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Contact Information</h3>
-                <div className="space-y-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Phone className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900 mb-1">Phone</h4>
-                      <p className="text-gray-600">(555) 123-4567</p>
-                      <p className="text-sm text-gray-500">Mon-Fri 9AM-6PM EST</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Mail className="h-6 w-6 text-green-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900 mb-1">Email</h4>
-                      <p className="text-gray-600">support@barberbook.com</p>
-                      <p className="text-sm text-gray-500">We'll respond within 24 hours</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <MapPin className="h-6 w-6 text-purple-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900 mb-1">Address</h4>
-                      <p className="text-gray-600">
-                        123 Business Ave
-                        <br />
-                        Suite 100
-                        <br />
-                        New York, NY 10001
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <h3 className="text-2xl font-bold text-purple-900 mb-2">Étape 1</h3>
+                <p className="text-lg text-purple-700 font-medium mb-2">Je crée mon site Nabou</p>
+                <p className="text-sm text-pink-600 font-medium">(en 2 minutes)</p>
               </div>
+            </div>
 
-              <div className="bg-white rounded-xl p-6 shadow-lg">
-                <h4 className="font-semibold text-gray-900 mb-4">Business Hours</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Monday - Friday</span>
-                    <span className="font-medium">9:00 AM - 6:00 PM</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Saturday</span>
-                    <span className="font-medium">10:00 AM - 4:00 PM</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Sunday</span>
-                    <span className="font-medium">Closed</span>
-                  </div>
-                </div>
+            {/* Step 2 */}
+            <div className="text-center space-y-6">
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto shadow-xl">
+                <Link2 className="h-10 w-10 text-white" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-purple-900 mb-2">Étape 2</h3>
+                <p className="text-lg text-purple-700 font-medium mb-2">Je partage mon lien personnalisé</p>
+                <p className="text-sm text-pink-600 font-medium">(Insta, TikTok, WhatsApp...)</p>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="text-center space-y-6">
+              <div className="w-20 h-20 bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl flex items-center justify-center mx-auto shadow-xl">
+                <Home className="h-10 w-10 text-white" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-purple-900 mb-2">Étape 3</h3>
+                <p className="text-lg text-purple-700 font-medium mb-2">Je reçois des RDV & je gère MES clientes</p>
+                <p className="text-sm text-pink-600 font-medium">(où que je travaille)</p>
               </div>
             </div>
           </div>
         </div>
       </section>
+
+      {/* Featured Barbers Section */}
+      <section className="bg-white py-16 lg:py-24">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+              <span className="bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+                Elles adorent Nabou 💜
+              </span>
+            </h2>
+            <p className="text-lg text-purple-700">Découvrez nos professionnels partenaires</p>
+          </div>
+
+
+          {loadingStores ? (
+            <div className="flex justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {featuredStores.map((store) => (
+                <StoreCard key={store.id} store={store} />
+              ))}
+            </div>
+          )}
+
+          {/* Testimonial */}
+          <div className="mt-16 max-w-4xl mx-auto">
+            <Card className="bg-gradient-to-br from-pink-50 to-purple-50 border-pink-200 shadow-xl">
+              <CardContent className="p-8 text-center">
+                <div className="flex justify-center mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-6 w-6 text-yellow-500 fill-current" />
+                  ))}
+                </div>
+                <p className="text-xl italic text-purple-900 mb-6">
+                  "Grâce à Nabou, mes clientes me suivent même quand je change de salon !"
+                </p>
+                <div className="flex items-center justify-center gap-4">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src="/placeholder-user.jpg" />
+                    <AvatarFallback className="bg-pink-200 text-pink-700">L</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-semibold text-purple-900">Laura</p>
+                    <p className="text-sm text-purple-600">Coiffeuse employée</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="bg-gradient-to-br from-purple-50 to-pink-50 py-16 lg:py-24">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+              <span className="bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+                FAQ express ✨
+              </span>
+            </h2>
+          </div>
+
+          <div className="space-y-8">
+            <Card className="bg-white/80 backdrop-blur-sm border-pink-200 shadow-lg">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-bold text-purple-900 mb-3">C'est vraiment gratuit ?</h3>
+                <p className="text-purple-700">Oui, 2 mois offerts. Ensuite 5 €/mois, sans engagement.</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/80 backdrop-blur-sm border-pink-200 shadow-lg">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-bold text-purple-900 mb-3">Je dois installer une appli ?</h3>
+                <p className="text-purple-700">Non, tout est en ligne, rien à installer.</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/80 backdrop-blur-sm border-pink-200 shadow-lg">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-bold text-purple-900 mb-3">Je peux arrêter quand je veux ?</h3>
+                <p className="text-purple-700">Oui, Nabou est sans engagement, tu peux stopper à tout moment.</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/80 backdrop-blur-sm border-pink-200 shadow-lg">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-bold text-purple-900 mb-3">Je ne suis pas à mon compte, ça marche ?</h3>
+                <p className="text-purple-700">
+                  Oui ! Nabou est fait pour TOUS les pros qui veulent fidéliser leur clientèle et mettre leur talent en
+                  avant.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+   
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-gradient-to-br from-pink-500 to-purple-500 rounded-xl">
+                  <Scissors className="h-6 w-6 text-white" />
+                </div>
+                <span className="text-2xl font-bold">Nabou</span>
+              </div>
+              <p className="text-gray-400 mb-4 max-w-md">
+                La solution simple et stylée pour garder ta clientèle et mettre en avant ton talent, où que tu sois.
+              </p>
+              <p className="text-sm italic text-purple-300">"Ton talent mérite une vitrine digitale."</p>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold mb-4">Navigation</h3>
+              <ul className="space-y-2 text-gray-400">
+                <li><a href="#" className="hover:text-white transition-colors">Accueil</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Fonctionnalités</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Tarifs</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">FAQ</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold mb-4">Suis-nous</h3>
+              <div className="flex gap-3">
+                <a href="#" className="w-10 h-10 bg-gradient-to-br from-pink-500 to-purple-500 rounded-lg flex items-center justify-center hover:scale-110 transition-transform">
+                  <Instagram className="h-5 w-5" />
+                </a>
+                <a href="#" className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center hover:scale-110 transition-transform">
+                  <MessageCircle className="h-5 w-5" />
+                </a>
+              </div>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
+            <p>&copy; 2025 Nabou. Tous droits réservés.</p>
+          </div>
+        </div>
+      </footer>
 
       {/* Registration Dialog */}
       <BarberRegistrationDialog open={showRegistration} onOpenChange={setShowRegistration} />
@@ -696,12 +528,14 @@ export default function HomePage() {
   )
 }
 
-// Store Card Component
 interface StoreCardProps {
   store: Store
 }
 
-function StoreCard({ store }: StoreCardProps) {
+
+
+export  function StoreCard({ store }: StoreCardProps) {
+  const { t } = useLanguage()
   const [storeImage, setStoreImage] = useState<string | null>(null)
   const [loadingImage, setLoadingImage] = useState(true)
 
@@ -727,23 +561,17 @@ function StoreCard({ store }: StoreCardProps) {
   }
 
   return (
-    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group">
-      <div className="aspect-video overflow-hidden bg-gray-100">
+    <Card className="group overflow-hidden rounded-2xl shadow-lg transition-all hover:shadow-2xl border border-gray-100">
+      <div className="aspect-video bg-gray-100 overflow-hidden">
         {loadingImage ? (
           <div className="w-full h-full flex items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
           </div>
-        ) : storeImage ? (
+        ) : storeImage || store.image_url ? (
           <img
-            src={storeImage || "/placeholder.svg"}
+            src={storeImage || store.image_url || "/placeholder.svg"}
             alt={store.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : store.image_url ? (
-          <img
-            src={store.image_url || "/placeholder.svg"}
-            alt={store.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
@@ -751,26 +579,31 @@ function StoreCard({ store }: StoreCardProps) {
           </div>
         )}
       </div>
-      <CardHeader>
-        <CardTitle className="text-xl">{store.title}</CardTitle>
-        <div className="space-y-2 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 flex-shrink-0" />
-            <span>{store.address}</span>
-          </div>
-          {store.description && <p className="text-gray-600 line-clamp-2">{store.description}</p>}
+
+      <CardHeader className="pb-0">
+        <CardTitle className="text-xl font-semibold text-gray-800">{store.title}</CardTitle>
+        <div className="mt-1 text-sm text-gray-600 flex items-center gap-2">
+          <MapPin className="h-4 w-4 flex-shrink-0" />
+          <span>{store.address}</span>
         </div>
+        {store.description && (
+          <p className="mt-2 text-gray-500 text-sm line-clamp-2">{store.description}</p>
+        )}
       </CardHeader>
-      <CardContent>
-        <div className="flex gap-2">
+
+      <CardContent className="mt-4 space-y-2">
+        <div className="flex gap-3">
           <Link href={`/profile/${store.slug}`} className="flex-1">
-            <Button variant="outline" className="w-full bg-transparent">
-              View Profile
+            <Button
+              variant="outline"
+              className="w-full border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              Voir le profil
             </Button>
           </Link>
           <Link href={`/book/${store.slug}`} className="flex-1">
-            <Button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
-              Book Now
+            <Button className="w-full bg-gradient-to-r from-pink-500 to-fuchsia-500 hover:from-pink-600 hover:to-fuchsia-600 text-white shadow-md">
+              Réserver
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>

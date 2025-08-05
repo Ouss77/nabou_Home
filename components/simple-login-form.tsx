@@ -5,7 +5,6 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
@@ -18,18 +17,13 @@ export function SimpleLoginForm() {
   const router = useRouter()
 
   useEffect(() => {
-    // Check for auto-login credentials from registration
     const autoLoginData = sessionStorage.getItem("autoLogin")
     if (autoLoginData) {
       try {
         const credentials = JSON.parse(autoLoginData)
         setEmail(credentials.email)
         setPassword(credentials.password)
-
-        // Clear the stored credentials
         sessionStorage.removeItem("autoLogin")
-
-        // Auto-submit the form after a brief delay
         setTimeout(() => {
           const form = document.querySelector("form")
           if (form) {
@@ -52,8 +46,11 @@ export function SimpleLoginForm() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      })
+        body: JSON.stringify({ 
+          email: email.toLowerCase().trim(), // Convert to lowercase and remove whitespace
+          password 
+        }),
+            })
 
       const data = await response.json()
 
@@ -61,7 +58,6 @@ export function SimpleLoginForm() {
         throw new Error(data.error || "Login failed")
       }
 
-      // Redirect based on role
       if (data.user.role === "admin") {
         router.push("/admin")
       } else {
@@ -75,10 +71,9 @@ export function SimpleLoginForm() {
   }
 
   return (
-    <Card className="border-0 shadow-xl">
+    <Card className="border-0 text-purple-900 shadow-xl">
       <CardHeader>
-        <CardTitle>Sign In</CardTitle>
-        <p className="text-slate-600 mt-2">Sign in to your account</p>
+        <CardTitle className="text-2xl">Sign In</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -88,45 +83,35 @@ export function SimpleLoginForm() {
             </Alert>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+          <div>
             <Input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="Enter your email"
+              placeholder="✉️  Email address"
+              className="placeholder:text-slate-500"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+          <div>
             <Input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="Enter your password"
+              placeholder="🔒  Password"
+              className="placeholder:text-slate-500"
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full bg-purple-900" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Sign In
           </Button>
         </form>
-
-     {/*   <div className="mt-6 text-center text-sm text-slate-600">
-          <p>Demo Credentials:</p>
-          <p>
-            <strong>Admin:</strong> admin@barbershop.com / admin123
-          </p>
-          <p>
-            <strong>Barber:</strong> john@barbershop.com / barber123
-          </p>
-        </div>*/}
       </CardContent>
     </Card>
   )
