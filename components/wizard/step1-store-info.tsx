@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,9 +11,15 @@ import { Store, MapPin, FileText } from "lucide-react"
 
 interface Step1StoreInfoProps {
   onNext: (store: any) => void
+  initialData?: {
+    title: string
+    address: string
+    description: string
+    imageUrl: string
+  }
 }
 
-export function Step1StoreInfo({ onNext }: Step1StoreInfoProps) {
+export function Step1StoreInfo({ onNext, initialData }: Step1StoreInfoProps) {
   const [formData, setFormData] = useState({
     title: "",
     address: "",
@@ -24,23 +30,29 @@ export function Step1StoreInfo({ onNext }: Step1StoreInfoProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
 
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
+  // Initialize form data when component mounts or when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData)
+    }
+  }, [initialData])
 
-  // Validation
-  const newErrors: Record<string, string> = {}
-  if (!formData.title.trim()) newErrors.title = "Store name is required"
-  if (!formData.address.trim()) newErrors.address = "Address is required"
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
 
-  if (Object.keys(newErrors).length > 0) {
-    setErrors(newErrors)
-    return
+    // Validation
+    const newErrors: Record<string, string> = {}
+    if (!formData.title.trim()) newErrors.title = "Store name is required"
+    if (!formData.address.trim()) newErrors.address = "Address is required"
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+
+    setErrors({})
+    onNext(formData) // Just pass the data to parent
   }
-
-  setErrors({})
-  onNext(formData) // Just pass the data to parent
-}
-
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -67,7 +79,7 @@ export function Step1StoreInfo({ onNext }: Step1StoreInfoProps) {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Store Name *</Label>
+              <Label htmlFor="title">Name or Nickname</Label>
               <div className="relative">
                 <Store className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input

@@ -280,7 +280,7 @@ export function BarberRegistrationDialog({
             {currentStep === 1 && (
               <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="space-y-2">
-                  <Label htmlFor="email">{t.registration.email}</Label>
+                  <Label htmlFor="email">{t.registration.email}</Label> 
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input

@@ -71,6 +71,6 @@ export async function generateMetadata({ params }: PageProps) {
 
   return {
     title: `${store.barber_name} - ${store.title}`,
-    description: store.description || `Professional barber services by ${store.barber_name}`,
+    description: store.description || `Professional Barber Categories by ${store.barber_name}`,
   }
 }

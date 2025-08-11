@@ -5,9 +5,14 @@ import { LanguageProvider } from "@/components/language-provider"
 import { ToastProvider, ToastViewport } from "@/components/ui/toast"
 
 export const metadata: Metadata = {
-  title: "BarberBook - Professional Barber Management",
+  title: "Nabou - Professional Barber Management",
   description: "Complete appointment management system for modern barbershops",
   generator: "v0.dev",
+  icons: {
+    icon: '/logo.jpg',
+    shortcut: '/logo.jpg',
+    apple: '/logo.jpg',
+  },
 }
 
 export default function RootLayout({
@@ -18,6 +23,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/logo.jpg" type="image/jpeg" />
+        <link rel="shortcut icon" href="/logo.jpg" type="image/jpeg" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

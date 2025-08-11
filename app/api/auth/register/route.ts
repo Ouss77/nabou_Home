@@ -113,8 +113,8 @@ async function createUserWithProfile(
 
   try {
     const result = await sql`
-      INSERT INTO users (email, password_hash, name, role, phone, city, profile_completed, email_verified)
-      VALUES (${email}, ${passwordHash}, ${name}, ${role}, ${phone}, ${city}, TRUE, TRUE)
+      INSERT INTO users (email, password_hash, name, role, phone, city)
+      VALUES (${email}, ${passwordHash}, ${name}, ${role}, ${phone}, ${city})
       RETURNING id, email, name, role, phone, city, created_at
     `
     return result[0]

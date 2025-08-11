@@ -14,8 +14,6 @@ export interface User {
   created_at: string
   phone?: string
   city?: string
-  profile_completed?: boolean
-  email_verified?: boolean
 }
 
 export interface Store {
@@ -125,9 +123,9 @@ export async function createUser(
   city?: string,
 ) {
   const result = await sql`
-    INSERT INTO users (email, password_hash, name, role, phone, city, profile_completed, email_verified, status)
-    VALUES (${email}, ${passwordHash}, ${name}, ${role}, ${phone || null}, ${city || null}, ${phone ? true : false}, true, ${role === "barber" ? "trial" : null})
-    RETURNING id, email, name, role, phone, city, profile_completed, email_verified, status, created_at
+    INSERT INTO users (email, password_hash, name, role, phone, city,  status)
+    VALUES (${email}, ${passwordHash}, ${name}, ${role}, ${phone || null}, ${city || null}, ${phone ? true : false}, ${role === "barber" ? "trial" : null})
+    RETURNING id, email, name, role, phone, city, status, created_at
   `
   return result[0]
 }

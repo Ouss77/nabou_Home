@@ -30,7 +30,7 @@ import { useLanguage } from "@/components/language-provider"
 import { LanguageSelector } from "@/components/language-selector"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
-import logo from "@/public/logo8.png"
+import logo from "@/public/logo.jpg"
 interface Store {
   id: string
   title: string
@@ -150,7 +150,7 @@ export default function HomePage() {
                 <Scissors className="h-6 w-6 text-white" />
               </div> */}
               <Link href="/" className="text-2xl font-bold text-purple-900">
-                <Image src={logo} alt="Nabou Logo" width={120} height={120} className="inline-block mr-2 rounded-md" />
+                <Image src={logo} alt="Nabou Logo" width={80} height={80} className="inline-block mr-2 rounded-md" />
               {/* <span className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
                 Nabou
               </span> */}

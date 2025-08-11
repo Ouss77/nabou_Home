@@ -334,7 +334,7 @@ export function BarberDashboard({
           </Badge>
 
           <span className="text-sm whitespace-nowrap hidden sm:inline font-medium">
-            Hello Mr {user.name}
+            Hello  {user.name}
           </span>
         </div>
 

@@ -14,8 +14,8 @@ interface Step2ActivityProps {
 const ACTIVITIES = [
   {
     id: "barber",
-    name: "Barber",
-    description: "Men's haircuts, beard trims, and traditional grooming",
+    name: "The Hair Studio",
+    description: "Haircuts and styling for men, women, and children – from classic cuts to modern trends",
     icon: Scissors,
     color: "bg-blue-500",
     popular: true,

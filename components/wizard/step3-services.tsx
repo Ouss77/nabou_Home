@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Trash2, Sparkles } from "lucide-react"
+import { Trash2, Sparkles, Loader2 } from "lucide-react"
 import { Textarea } from "../ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Clock, DollarSign } from "lucide-react"
@@ -21,7 +21,7 @@ interface Service {
 }
 
 interface Step3ServicesProps {
-  storeId: string
+  storeId?: string  // Make storeId optional
   selectedActivity: string
   onNext: () => void
   onBack: () => void
@@ -348,7 +348,7 @@ const CATEGORY_SERVICES = {
 // Get activity display name
 const getActivityDisplayName = (activityId: string): string => {
   const activityNames: Record<string, string> = {
-    barber: "Barber",
+    barber: "The Hair Studio",
     nail_artist: "Nail Artist",
   }
   return activityNames[activityId] || "Services"
@@ -374,12 +374,19 @@ export function Step3Services({ storeId, selectedActivity, onNext, onBack }: Ste
     : []
   const activityDisplayName = getActivityDisplayName(selectedActivity)
 
-  // Fetch existing services
+  // Fetch existing services - only if storeId is available
   useEffect(() => {
-    fetchServices()
+    if (storeId) {
+      fetchServices()
+    }
   }, [storeId])
 
   const fetchServices = async () => {
+    if (!storeId) {
+      console.log("No storeId available, skipping service fetch")
+      return
+    }
+    
     try {
       const response = await fetch(`/api/barber/services?storeId=${storeId}`)
       if (response.ok) {
@@ -392,6 +399,15 @@ export function Step3Services({ storeId, selectedActivity, onNext, onBack }: Ste
   }
 
   const handleAddSuggestedService = async (suggestedService: (typeof suggestedServices)[0]) => {
+    if (!storeId) {
+      toast({
+        title: "Store Creation Required",
+        description: "Please complete the store setup first.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
     try {
       const response = await fetch("/api/barber/services", {
@@ -425,6 +441,15 @@ export function Step3Services({ storeId, selectedActivity, onNext, onBack }: Ste
 
   const handleAddCustomService = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!storeId) {
+      toast({
+        title: "Store Creation Required",
+        description: "Please complete the store setup first.",
+        variant: "destructive",
+      })
+      return
+    }
 
     if (!newService.name || !newService.price || !newService.duration_minutes) {
       toast({
@@ -472,6 +497,8 @@ export function Step3Services({ storeId, selectedActivity, onNext, onBack }: Ste
   }
 
   const handleDeleteService = async (serviceId: string) => {
+    if (!storeId) return
+
     setIsLoading(true)
     try {
       const response = await fetch(`/api/barber/services/${serviceId}`, {
@@ -497,8 +524,70 @@ export function Step3Services({ storeId, selectedActivity, onNext, onBack }: Ste
     }
   }
 
-  const handleCategorySelect = (categoryId: string) => {
-    setSelectedCategory(categoryId)
+  const handleCategorySelect = async (categoryId: string) => {
+    // Don't set selectedCategory anymore, just add services
+    // setSelectedCategory(categoryId)
+    
+    // Automatically add all services from this category
+    const categoryServices = CATEGORY_SERVICES[categoryId as keyof typeof CATEGORY_SERVICES] || []
+    
+    if (categoryServices.length > 0 && storeId) {
+      setIsLoading(true)
+      let addedCount = 0
+      
+      try {
+        for (const service of categoryServices) {
+          // Check if service already exists
+          const exists = services.some((existingService) => 
+            existingService.name.toLowerCase() === service.name.toLowerCase()
+          )
+          
+          if (!exists) {
+            const response = await fetch("/api/barber/services", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                storeId,
+                ...service,
+              }),
+            })
+
+            if (response.ok) {
+              const result = await response.json()
+              setServices((prev) => [...prev, result.service])
+              addedCount++
+            }
+          }
+        }
+        
+        if (addedCount > 0) {
+          toast({
+            title: "Services Added",
+            description: `${addedCount} services have been added automatically to your store.`,
+          })
+        } else {
+          toast({
+            title: "No New Services",
+            description: "All services from this category are already in your store.",
+          })
+        }
+      } catch (error) {
+        console.error("Failed to add services:", error)
+        toast({
+          title: "Error",
+          description: "Failed to add some services. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    } else if (!storeId) {
+      toast({
+        title: "Store Creation Required",
+        description: "Please complete the store setup first.",
+        variant: "destructive",
+      })
+    }
   }
 
   const availableSuggestions = suggestedServices.filter(
@@ -507,6 +596,13 @@ export function Step3Services({ storeId, selectedActivity, onNext, onBack }: Ste
 
   return (
     <div className="space-y-6">
+      {/* Show a message if no storeId */}
+      {!storeId && (
+        <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-yellow-800">Store setup in progress... Services will be available once your store is created.</p>
+        </div>
+      )}
+      
       <div className="text-center">
         <div className="flex items-center justify-center gap-2 mb-4">
           <Sparkles className="h-6 w-6 text-primary" />
@@ -520,114 +616,71 @@ export function Step3Services({ storeId, selectedActivity, onNext, onBack }: Ste
         </p>
       </div>
 
-      {/* Category Selection */}
-      {!selectedCategory && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              {activityDisplayName} Categories
-            </CardTitle>
-            <CardDescription>
-              Choose the category that best matches your services.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {availableCategories.map((category) => (
+      {/* Category Selection - Always show */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            {activityDisplayName} Categories
+          </CardTitle>
+          <CardDescription>
+            Choose categories and all their services will be added automatically to your store.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading && (
+            <div className="text-center p-4 mb-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-blue-800 flex items-center justify-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Adding services automatically...
+              </p>
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {availableCategories.map((category) => {
+              // Check if all services from this category are already added
+              const categoryServices = CATEGORY_SERVICES[category.id as keyof typeof CATEGORY_SERVICES] || []
+              const allServicesAdded = categoryServices.every(categoryService => 
+                services.some(service => service.name.toLowerCase() === categoryService.name.toLowerCase())
+              )
+              
+              return (
                 <div
                   key={category.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                  onClick={() => handleCategorySelect(category.id)}
+                  className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
+                    isLoading 
+                      ? 'opacity-50 pointer-events-none' 
+                      : allServicesAdded 
+                        ? 'bg-green-50 border-green-200 opacity-75'
+                        : 'hover:bg-muted/50'
+                  }`}
+                  onClick={() => !isLoading && !allServicesAdded && handleCategorySelect(category.id)}
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-lg">{category.icon}</span>
                       <h4 className="font-medium">{category.name}</h4>
+                      {allServicesAdded && (
+                        <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
+                          Added
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">{category.description}</p>
-                  </div>
-                  <Plus className="h-5 w-5 text-primary" />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Selected Category and Services */}
-      {selectedCategory && (
-        <>
-          {/* Category Header */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">
-                    {availableCategories.find(c => c.id === selectedCategory)?.icon}
-                  </span>
-                  <div>
-                    <h3 className="font-medium">
-                      {availableCategories.find(c => c.id === selectedCategory)?.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {availableCategories.find(c => c.id === selectedCategory)?.description}
+                    <p className="text-xs text-primary mt-1">
+                      {allServicesAdded 
+                        ? `All ${categoryServices.length} services added`
+                        : `Will add ${categoryServices.length} services`
+                      }
                     </p>
                   </div>
+                  {!allServicesAdded && <Plus className="h-5 w-5 text-primary" />}
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setSelectedCategory("")}
-                >
-                  Change Category
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Suggested Services */}
-          {availableSuggestions.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  Recommended Services
-                </CardTitle>
-                <CardDescription>
-                  Popular services for this category. Click to quickly add them to your offerings.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {availableSuggestions.map((service, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                      onClick={() => handleAddSuggestedService(service)}
-                    >
-                      <div className="flex-1">
-                        <h4 className="font-medium">{service.name}</h4>
-                        <p className="text-sm text-muted-foreground">{service.description}</p>
-                        <div className="flex items-center gap-4 mt-1">
-                          <Badge variant="secondary" className="text-xs">
-                            <DollarSign className="h-3 w-3 mr-1" />€{service.price}
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            <Clock className="h-3 w-3 mr-1" />
-                            {service.duration_minutes}min
-                          </Badge>
-                        </div>
-                      </div>
-                      <Plus className="h-5 w-5 text-primary" />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </>
-      )}
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Current Services */}
       {services.length > 0 && (
@@ -668,8 +721,8 @@ export function Step3Services({ storeId, selectedActivity, onNext, onBack }: Ste
         </Card>
       )}
 
-      {/* Add Custom Service - only show after category is selected */}
-      {selectedCategory && (
+      {/* Add Custom Service - show when there are services */}
+      {services.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Add Custom Service</CardTitle>

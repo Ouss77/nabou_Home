@@ -23,7 +23,8 @@ const WIZARD_STEPS = ["Store Info", "Activity", "Services", "Working Hours", "Im
 
 export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWizardProps) {
   const [currentStep, setCurrentStep] = useState(1)
-  const [store, setStore] = useState<Store | null>(null)
+  const [storeData, setStoreData] = useState(null)
+  const [tempStoreData, setTempStoreData] = useState(null) // Add temporary storage
   const [selectedActivity, setSelectedActivity] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
   const dialogContentRef = useRef<HTMLDivElement>(null);
@@ -32,7 +33,8 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
   useEffect(() => {
     if (open) {
       setCurrentStep(1)
-      setStore(null)
+      setStoreData(null)
+      setTempStoreData(null)
       setSelectedActivity("")
       setIsLoading(false)
     }
@@ -53,38 +55,41 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
     setCurrentStep((prev) => Math.max(prev - 1, 1))
   }
 
-  const handleStoreCreate = async (storeData: {
-    title: string
-    address: string
-    description: string
-    imageUrl?: string
-  }) => {
-    setIsLoading(true)
-    try {
-      const response = await fetch("/api/barber/store", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(storeData),
-      })
-
-      const result = await response.json()
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to create store.")
-      }
-
-      setStore(result.store)
-      handleNext()
-    } catch (error) {
-      console.error("Store creation error:", error)
-      // You can add error handling UI here
-    } finally {
-      setIsLoading(false)
-    }
+  const handleStoreInfoNext = (data: any) => {
+    setTempStoreData(data) // Store temporarily
+    setCurrentStep(2) // Go to activity selection first
   }
 
-  const handleActivitySelect = (activity: string) => {
+  const handleActivitySelect = async (activity: string) => {
     setSelectedActivity(activity)
-    handleNext()
+    
+    // Now create the store with both store info and activity
+    if (tempStoreData) {
+      setIsLoading(true)
+      try {
+        const response = await fetch("/api/barber/store", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...tempStoreData,
+            activity: activity
+          }),
+        })
+
+        const result = await response.json()
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to create store.")
+        }
+
+        setStoreData(result.store)
+        setCurrentStep(3) // Now go to services with valid storeId
+      } catch (error) {
+        console.error("Store creation error:", error)
+        // Handle error - maybe show toast
+      } finally {
+        setIsLoading(false)
+      }
+    }
   }
 
   const handleFinish = () => {
@@ -92,8 +97,8 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
   }
 
   const handleComplete = () => {
-    if (store) {
-      onSuccess(store)
+    if (storeData) {
+      onSuccess(storeData)
     }
     onOpenChange(false)
   }
@@ -112,24 +117,38 @@ export function StoreSetupWizard({ open, onOpenChange, onSuccess }: StoreSetupWi
 
     switch (currentStep) {
       case 1:
-        return <Step1StoreInfo onNext={handleStoreCreate} />
+        return (
+          <Step1StoreInfo
+            onNext={handleStoreInfoNext}
+            initialData={tempStoreData || storeData}
+          />
+        )
       case 2:
-        return <Step2Activity onNext={handleActivitySelect} onBack={handleBack} />
+        return (
+          <Step2Activity
+            onNext={handleActivitySelect}
+            onBack={() => setCurrentStep(1)}
+          />
+        )
       case 3:
-        return store ? (
+        return storeData ? (
           <Step3Services
-            storeId={store.id}
+            storeId={storeData.id}
             selectedActivity={selectedActivity}
             onNext={handleNext}
             onBack={handleBack}
           />
-        ) : null
+        ) : (
+          <div className="text-center p-4">
+            <p>Setting up store... Please wait.</p>
+          </div>
+        )
       case 4:
-        return store ? <Step4WorkingHours storeId={store.id} onNext={handleNext} onBack={handleBack} /> : null
+        return storeData ? <Step4WorkingHours storeId={storeData.id} onNext={handleNext} onBack={handleBack} /> : null
       case 5:
-        return store ? <Step5Images storeId={store.id} onFinish={handleFinish} onBack={handleBack} /> : null
+        return storeData ? <Step5Images storeId={storeData.id} onFinish={handleFinish} onBack={handleBack} /> : null
       case 6:
-        return store ? <Step6Confirmation store={store} onComplete={handleComplete} /> : null
+        return storeData ? <Step6Confirmation store={storeData} onComplete={handleComplete} /> : null
       default:
         return <div>Step not found</div>
     }
